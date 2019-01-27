@@ -1,4 +1,3 @@
-# Stargate
+# Stardock
 
-An evolution of [Starphleet](https://github.com/wballard/starphleet)
-backed by AWS Fargate.
+An evolution of [Starphleet](https://github.com/wballard/starphleet).
