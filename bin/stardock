@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#set -x
+
+###################################################################
+## List of init jobs we should run
+###################################################################
+INITS=${INITS:-"
+  ONE
+  TWO
+  THIS-IS-TEST
+  UNDERSCORES_HERE
+"}
+
+###################################################################
+## Guards - Don't Move Forward Unless We Should
+###################################################################
+function punt() {
+  echo "$1"
+  exit 1
+}
+
+if ! which stardock-launcher > /dev/null; then
+  punt "Environment not loaded"
+fi
+
+###################################################################
+## Runs a sub process and keeps track of it
+###################################################################
+declare -A CHILDREN
+function run_daemon() {
+  # run daemon
+  sleep 2 &
+  CHILDREN["$1"]=$!
+}
+
+###################################################################
+## Let's take care of our children when we die
+###################################################################
+function kill_children() {
+  for init in "${!CHILDREN[@]}"; do
+    if [ -e "/proc/${CHILDREN[$init]}" ]; then
+      echo "Killing $init ${CHILDREN[$init]}"
+      kill "${CHILDREN[$init]}"
+      wait "${CHILDREN[$init]}"
+    fi
+    echo here
+  done
+}
+
+trap "{ kill_children; exit 0; }" SIGTERM EXIT
+
+###################################################################
+## Start Things Off
+###################################################################
+for init in $INITS; do
+  run_daemon "${init}"
+done
+
+###################################################################
+## Watchdog - Keep Our Inits Running
+###################################################################
+while [ 1 ]; do
+  for init in "${!CHILDREN[@]}"; do
+    if [ ! -e "/proc/${CHILDREN[$init]}" ]; then
+      run_daemon "${init}"
+    fi
+    echo $init:${CHILDREN[$init]}
+  done
+  sleep 1
+done

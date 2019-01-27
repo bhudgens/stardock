@@ -1,0 +1,4 @@
+#!/usr/bin/env stardock-launcher
+echo hello
+
+export TTT="hello"

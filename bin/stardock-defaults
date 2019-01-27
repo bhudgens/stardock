@@ -1,0 +1,99 @@
+#configure starphleet here
+#a default port for the forgetful order
+export PORT=${PORT:-3001}
+export PUBLISH_PORT=0
+export LXC_ROOT="/var/lib/lxc"
+export STARPHLEET_SHARED_DATA="${LXC_ROOT}/data"
+export STARPHLEET_PULSE="10"
+export STARPHLEET_DRAINSTOP_WAIT="30"
+export STARPHLEET_ROOT="/var/starphleet"
+export STARPHLEET_TMP="${STARPHLEET_ROOT}/tmp"
+export STARPHLEET_CACHE="${STARPHLEET_ROOT}/cache"
+export STARPHLEET_GITHUB_LOCAL="${STARPHLEET_ROOT}/github"
+export STARPHLEET_BASE="starphleet-base"
+export HEADQUARTERS_SOURCE="${STARPHLEET_ROOT}/.headquarters"
+export HEADQUARTERS_LOCAL="${STARPHLEET_ROOT}/headquarters"
+export HEADQUARTERS_ENV="${STARPHLEET_ROOT}/headquarters/.starphleet"
+export SHIPS="${HEADQUARTERS_LOCAL}/ships"
+export SHIP_SCRIPTS="${HEADQUARTERS_LOCAL}/shipscripts"
+export CURRENT_ORDERS="${STARPHLEET_ROOT}/current_orders"
+export PRIVATE_KEYS="${STARPHLEET_ROOT}/private_keys"
+export PUBLIC_KEYS="${STARPHLEET_ROOT}/public_keys"
+export NGINX_CONF="${STARPHLEET_ROOT}/nginx"
+export BUILDPACKS="${STARPHLEET_ROOT}/buildpacks"
+export ADMIRAL="admiral"
+export ADMIRAL_HOME="/home/admiral"
+export CAPTAIN="captain"
+export CAPTAIN_HOME="/home/captain"
+# If this file exist the hupper will regen the nginx configs and hup nginx
+export STARPHLEET_NGINX_HUP_TURD="/var/run/starphleet_hup_turd"
+# If this file exist the hupper will 'restart' nginx when done instead of hup
+export STARPHLEET_RESTART_NGINX_HUP_TURD="/var/run/starphleet_restart_hup_turd"
+export MAX_OPEN_FILES="4096"
+if [ "${TERM}" == "unknown" ]; then
+  export TERM="xterm-256color"
+fi
+
+
+export SHIP=ship-$(ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub | awk '{ print $2; }' | sed -e 's/://g')
+export STARPHLEET_APP_USER="ubuntu"
+export USER_IDENTITY_HEADER="x-identity"
+export USER_IDENTITY_COOKIE="starphleet_user"
+# Configuration for starphleet-dns-*
+export NGINX_PUBLISHED_PATH="/var/starphleet/nginx/published"
+export NGINX_STATUS_CONFIG_SYMLINK="${NGINX_PUBLISHED_PATH}/starphleet_nginx_status.status"
+export NGINX_STATUS_ENDPOINT_CONFIG="/var/starphleet/nginx/status.conf"
+export STARPHLEET_DNS_ONLINE_STATUS_FILE="/tmp/.starphleet.online"
+export STARPHLEET_AUTHENTIC_TOKEN="CHANGEME"
+# Declare drives we'd setup and where they should mount for starphleet install on EC2
+declare -A EC2_DRIVES
+EC2_DRIVES["/dev/xvdb"]="/var/lib/lxc"
+EC2_DRIVES["/dev/xvdc"]="/var/starphleet"
+EC2_DRIVES["/dev/xvdd"]="/var/log/biglogs"
+EC2_DRIVES["/dev/xvde"]="/var/lib/lxc/data"
+# Support AWS NVME drives
+EC2_DRIVES["/dev/nvme1n1"]="/var/lib/lxc"
+EC2_DRIVES["/dev/nvme2n1"]="/var/starphleet"
+EC2_DRIVES["/dev/nvme3n1"]="/var/log/biglogs"
+EC2_DRIVES["/dev/nvme4n1"]="/var/lib/lxc/data"
+
+##########################################################
+# CONTAINER STORAGE ON S3
+##########################################################
+
+unset SERVE_CONTAINERS
+unset BUILD_CONTAINERS
+unset S3_STORAGE_AWS_ACCESS_KEY_ID
+unset S3_STORAGE_AWS_SECRET_ACCESS_KEY
+unset S3_STORAGE_BUCKET_REGION
+unset S3_STORAGE_BUCKET_PATH
+export EXIT_CODE_FOR_FAILED_S3_DOWNLOADS=15
+
+##########################################################
+# DEVMODE
+##########################################################
+export DEVMODE_BUILD_CACHE="${DEVMODE_BUILD_CACHE:-'/home/ubuntu/.devmode_build_cache'}"
+
+unset DEVMODE_UNBIND_GIT_DIR
+unset DEVMODE_FORCE_AUTH
+unset DEVMODE_ENABLED
+
+##########################################################
+# SECURITY
+##########################################################
+# Security mode can be one of the following:
+# htpasswd|ldap|public|jwt
+export SECURITY_MODE="htpasswd"
+# LDAP Needs
+unset LDAP_SERVER
+# JWT Needs
+unset JWT_SECRET
+unset JWT_AUTH_SITE
+unset JWT_COOKIE_DOMAIN
+unset JWT_ACCESS_FLAGS
+unset JWT_COOKIE_NAME
+unset JWT_REVOCATION_DIR
+unset JWT_EXPIRATION_IN_SECONDS
+unset JWT_MAX_TOKEN_AGE_IN_SECONDS
+# HTPASSWD Needs
+unset HTPASSWD

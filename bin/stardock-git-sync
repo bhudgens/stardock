@@ -1,0 +1,76 @@
+#!/usr/bin/env stardock-launcher
+# vim:ft=sh
+### Usage:
+###    stardock-git-sync <remote> [<local>]
+### --help
+###
+### Make sure a git repo, with an option #[branch|tag] is
+### pulled and merged into the specified local
+###
+### This exits 0 if there were changes, 1 if not, easier
+### to use in a shell script if this way
+
+REMOTE=$(echo "${remote//$'\r'/}" | awk -F '#' '{print $1;}')
+BRANCH=$(echo "${remote//$'\r'/}" | awk -F '#' '{print $2;}')
+BRANCH="${BRANCH:-master}"
+local="${local:-$(basename ${REMOTE})}"
+
+STARTING_DIRECTORY=$(pwd)
+trap 'cd "${STARTING_DIRECTORY}"' EXIT
+
+reclone () {
+  cd ..
+  rm -rf "${local}"
+  stardock-git clone -b ${BRANCH} "${REMOTE}" "${local}" || fatal clone error
+}
+
+dev_mode && [ -d "${local}/.git" ] && exit 1
+
+if [ -d "${local}/.git" ]; then
+  info synch ${remote} to ${local}
+  cd "${local}"
+  #make sure we have the correct repository and branch
+  ORIGIN_URL=$(git config remote.origin.url)
+  #make sure we have the correct repository and branch
+  if [ "${ORIGIN_URL}" != "${REMOTE}" ]; then
+    warn repository url differs, reclone needed
+    reclone
+    exit 0
+  else
+    stardock-git fetch --all &> /dev/null || fatal fetch error
+  fi
+  CURRENT_BRANCH=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
+  if [ "${BRANCH}" != "${CURRENT_BRANCH}" ]; then
+    warn specified branch changed, checking out ${BRANCH}
+    git checkout "${BRANCH}" || fatal checkout error
+    exit 0
+  fi
+  CURRENT_BRANCH=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
+  HAS_CHANGES=$(git diff HEAD...origin/${CURRENT_BRANCH} --raw)
+  if [ "${HAS_CHANGES}x" != "x" ]; then
+    warn new code detected, pulling
+    stardock-git fetch || fatal error during fetch of latest code
+    stardock-git reset --hard origin/${CURRENT_BRANCH} || fatal pull error
+    exit 0
+  fi
+  GIT_STATUS=$(git status)
+  remote_pattern="Your branch is (.*) of (.*) by ([0-9]*) commit"
+  diverge_pattern="Your branch and (.*) have diverged"
+  if [[ ${GIT_STATUS} =~ "${remote_pattern}" ]]; then
+    warn this clone is not current, reclone needed
+    reclone
+    exit 0
+  fi
+  if [[ ${GIT_STATUS} =~ "${diverge_pattern}" ]]; then
+    warn this clone is diverged, reclone needed
+    reclone
+    exit 0
+  fi
+else
+  warn ${local} not found, initial clone needed from "${REMOTE}" to "${local}"
+  stardock-git clone -b ${BRANCH} "${REMOTE}" "${local}" || fatal clone error
+  exit 0
+fi
+
+#no changes, pop an error code
+exit 1

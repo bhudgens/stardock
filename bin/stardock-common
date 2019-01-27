@@ -1,0 +1,429 @@
+# vim: set ft=sh : #main include file for starphleet scripts
+
+ulimit -n ${MAX_OPEN_FILES} > /dev/null
+
+die() { echo $1 ; exit ${2-1} ;}
+
+#Library of colorized logging functions, just source this
+function error() {
+  echo -e  '\E[31m'"$(date +"%x %X - ")\033[1m$*\033[0m"
+}
+
+function announce() {
+  echo -e  '\E[34m'"$(date +"%x %X - ")\033[1m$*\033[0m"
+}
+
+function fatal() {
+  echo -e  '\E[31m'"$(date +"%x %X - ")\033[1m$*\033[0m"
+  exit 1
+}
+
+function trace() {
+  >&2 echo -e  '\E[35m'"$(date +"%x %X - ")\033[1m$*\033[0m"
+}
+
+function info() {
+  echo -e  '\E[32m'"$(date +"%x %X - ")\033[1m$*\033[0m"
+}
+
+function warn() {
+  echo -e  '\E[33m'"$(date +"%x %X - ")\033[1m$*\033[0m"
+}
+
+function log() {
+  echo -e "$(date +"%x %X - ")$*"
+}
+
+function code() {
+  echo -e "CODE$*"
+  exit $*
+}
+
+silent_pushd(){ pushd $1 > /dev/null 2>&1; }
+
+silent_popd(){ popd $1 > /dev/null 2>&1 ; }
+
+#get the current sha for a given git repository
+function get_CURRENT_SHA() {
+  export CURRENT_SHA=$(git --git-dir "$1/.git" --work-tree "$1" rev-parse --short HEAD)
+}
+
+function get_VERSION_DIFF() {
+  export VERSION_DIFF=$(git --git-dir ${1}/.git --work-tree ${1} diff ${2} ${3} ${4})
+}
+
+function get_SHASUM() {
+  export SHASUM=$(sha1sum "${1}" | awk '{ print substr($1,1,7); }')
+}
+
+function get_HASH() {
+  export HASH=$(echo $1 | sha1sum | awk '{ print $1; }')
+}
+
+function autodeploy() {
+  export AUTODEPLOY="${1}"
+}
+
+function run_ship_scripts() {
+  if [ -d "${SHIP_SCRIPTS}" ]; then
+    for file in $(find "${SHIP_SCRIPTS}") ; do
+      if [ -x $file ] && [ -f $file ]; then
+        #no crashing allowed for these
+        $file || true
+      fi
+    done
+  fi
+}
+
+function make_user() {
+  THE_USER="${1}"
+  HOME_DIR="${2}"
+  useradd "${THE_USER}" -m -d "${HOME_DIR}"
+  test -d "${HOME_DIR}/.ssh" || mkdir -p "${HOME_DIR}"/.ssh; ssh-keygen -t rsa -f "${HOME_DIR}/.ssh/id_rsa" -q -N "" -C 'user on the phleet'
+  chown -R "${THE_USER}":"${THE_USER}" "${HOME_DIR}"
+  info "${THE_USER}" created
+}
+
+function mail_log()
+{
+  if which mail > /dev/null; then
+    ORDER_LOCAL="${HEADQUARTERS_LOCAL}/${order}/git"
+    latest_AUTHOR "${ORDER_LOCAL}"
+    cat /var/log/upstart/${UPSTART_JOB}-${name}.log \
+    | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g" \
+    | mail -s "Starphleet Build Failure: ${name}" "${AUTHOR}"
+  fi
+}
+
+function latest_AUTHOR()
+{
+  export AUTHOR=$(git --git-dir "${1}/.git" --work-tree "${1}" log -1 --format='%ae')
+}
+
+#placeholder
+function expose() {
+  true
+}
+
+# In bash, the return values are odd.  Exiting with a Zero
+# means you didn't have a problem.
+#
+# See:  http://glg.link/Ea8zjA
+export TRUE=0;
+export FALSE=1;
+
+
+# All the rules that surround the supported security measures
+# for starphleet.  For instance, if a certain security feature
+# has constraints, needs certain settings or files, or needs various
+# conditions to exist they should be tested here.  The environment,
+# when this is called should be "expected" to have everything we need.
+# If, when this is called, we do not have everything we need for a certain
+# security measure something is wrong.
+function validate_security() {
+
+  # SECURITY_MODE is set in the default starphleet config.  If it gets unset
+  # something went wrong so let the user know
+  if ! echo "${SECURITY_MODE}" | egrep 'htpasswd|jwt|ldap|public' > /dev/null; then
+    error "Invalid security mode: [${SECURITY_MODE}]";
+    return ${FALSE};
+  fi
+
+  info Security Mode: ${SECURITY_MODE}
+
+  ################
+  # LDAP Rules
+  ################
+  if [ "${SECURITY_MODE}" = 'ldap' ]; then
+    if [ -z "${LDAP_SERVER}" ]; then
+      error "Must specify LDAP server [${SECURITY_MODE}] ${LDAP_SERVER}"
+      return ${FALSE}
+    fi
+    return ${TRUE}
+  fi
+  ################
+  # JWT Rules
+  ################
+  if [ "${SECURITY_MODE}" = 'jwt' ]; then
+    if [ -z "${JWT_SECRET}" ] || \
+       [ -z "${JWT_COOKIE_DOMAIN}" ] || \
+       [ -z "${JWT_ACCESS_FLAGS}" ] || \
+       [ -z "${JWT_REVOCATION_DIR}" ] || \
+       [ -z "${JWT_COOKIE_NAME}" ] || \
+       [ -z "${JWT_MAX_TOKEN_AGE_IN_SECONDS}" ] || \
+       [ -z "${JWT_EXPIRATION_IN_SECONDS}" ]; then
+       error "All JWT vars not set"
+       return ${FALSE}
+    fi
+    return ${TRUE}
+  fi
+  ################
+  # HTPASSWD Rules
+  ################
+  if [ "${SECURITY_MODE}" = 'htpasswd' ]; then
+    if [ -z "${HTPASSWD}" ]; then
+      error "HTPASSWD not set: ${HTPASSWD}"
+      return ${FALSE}
+    fi
+    return ${TRUE}
+  fi
+  ################
+  # Public Rules
+  ################
+  if [ "${SECURITY_MODE}" = "public" ]; then
+    return ${TRUE}
+  fi
+  ################
+  # Default rule
+  ################
+  # If all else fails our default is to puke
+  error "Critical Error - Never get here!! OMG!"
+  return ${FALSE}
+}
+
+function run_orders()
+{
+  # These two commands only exist inside the container.
+  # they are not built into starphleet, and instead, are
+  # pulled from S3.  We don't want them to error if the
+  # orders file is sourced when the commands don't exist
+  # ...for example, on the host machine.
+  if [ -z "${ORDERS_NAME}" ]; then
+    secrets() {
+      :
+    }
+
+    fromJson() {
+      :
+    }
+  fi
+
+  autodeploy () {
+    info autodeploy from "${1}"
+    [ -n "${AUTODEPLOY}" ] && echo "${1}" > "${AUTODEPLOY}"
+    SERVICE_GIT_URL="${1}"
+  }
+
+  stop_before_autodeploy () {
+    STOP_BEFORE_AUTODEPLOY=1
+  }
+
+  # If the order is unpublished - push an 'empty' link to ${AUTODEPLOY} so the previous
+  # git repo doesn't accidently get re-copied into the wrong order folder
+  unpublished () {
+    [ -n "${AUTODEPLOY}" ] && echo "" > "${AUTODEPLOY}"
+    UNPUBLISHED=1
+  }
+
+  redirect () {
+    info redirect "${1} ${2}"
+    REDIRECT=${1}
+    REDIRECTTO=${2}
+  }
+
+  redirect_to_service () {
+   REDIRECT_TO_SERVICE=${1}
+   # run_orders is called multiple times, and sometimes it doesn't have
+   # all the variables set, so if we don't have the one we need, we don't do
+   # anything
+   if [ -z "${CURRENT_ORDER}" ]; then
+     return
+   fi
+   touch ${CURRENT_ORDER}/.container
+  }
+
+  redirect_to () {
+    # although it is perfectly ok ( it seems ) to redeclare an array when
+    # one of the same name exists ( it doesn't seem to do anything ) the
+    # desire is to only create one if it's needed, so to do this we use the
+    # lenght of the array as a proxy for existence as bash has no way to  check fo
+    # the existence of an empty array that I can find
+    if [ ${#REDIRECT_TO[@]} -eq 0 ]; then
+      declare -A -g REDIRECT_TO
+    fi
+    REDIRECT_TO[$1]=$2
+  }
+
+  add_header () {
+    HEADER_NAME=$1
+    info orders request additional header "$HEADER_NAME"
+    shift
+    # although it is perfectly ok ( it seems ) to redeclare an array when
+    # one of the same name exists ( it doesn't seem to do anything ) the
+    # desire is to only create one if it's needed, so to do this we use the
+    # lenght of the array as a proxy for existence as bash has no way to  check fo
+    # the existence of an empty array that I can find
+    if [ ${#SERVICE_HEADERS[@]} -eq 0 ]; then
+      declare -A -g SERVICE_HEADERS
+    fi
+    SERVICE_HEADERS[$HEADER_NAME]="$@"
+  }
+
+  add_response_header () {
+   local HEADER_NAME=$1
+   info orders request additional response header "$HEADER_NAME"
+   shift
+   # although it is perfectly ok ( it seems ) to redeclare an array when
+   # one of the same name exists ( it doesn't seem to do anything ) the
+   # desire is to only create one if it's needed, so to do this we use the
+   # lenght of the array as a proxy for existence as bash has no way to  check fo
+   # the existence of an empty array that I can find
+   if [ ${#RESPONSE_HEADERS[@]} -eq 0 ]; then
+     declare -A -g RESPONSE_HEADERS
+   fi
+   RESPONSE_HEADERS[$HEADER_NAME]="$@"
+  }
+
+  beta () {
+    BETAS[$1]=$2
+  }
+
+  proxy_for () {
+    PROXY_FOR_NAMES="$@"
+  }
+
+  enable_cache_endpoint () {
+    ADD_CACHED_LOCATION="yes"
+  }
+
+  server_names () {
+    SERVER_NAMES_CONF_NAME=$1
+    shift
+    SERVER_NAMES="$@"
+  }
+
+  log_to_stderr () {
+    LOG_TO_STDERR=1
+  }
+
+  publish () {
+    PUBLISH_FROM="${1}"
+  }
+
+  nginx_location_configs () {
+    NGINX_LOCATION_CONFIGS="$@"
+  }
+
+  source "${1}" || true
+}
+
+#Load up BRIDGE_IP with the address of the bridge loopback. This is the
+#way to easily let containers speak to the ship
+function bridge_ip() {
+  BRIDGE_IP=$(ifconfig | grep -A 1 'lxcbr0' | tail -1 | cut -d ':' -f 2 | cut -d ' ' -f 1)
+}
+
+#set the environment up for the app_root and orders
+function container_environment() {
+  cd ${1}
+  run_orders ${2}
+  for file in ${1}/.profile.d/*; do source ${file}; done
+  export PATH=${PATH}:/usr/local/bin
+}
+
+# Handle all the buggy details of installing a modern
+# version of the aws cli command
+function get_updated_aws_command {
+  AWS_INSTALL_LOCK_FILE="/var/lock/aws_command_install"
+  # Because aws cli on our machines is a mixed bag and I really do
+  # want a modern version.  It's okay if they aren't consistent for
+  # what we are doing so long as the version isn't 10 years old.
+  export AWS_COMMAND_PATH="/usr/local/bin/aws"
+
+  # Test if we need to upgrade aws cli
+  unset UPGRADE
+  if $AWS_COMMAND_PATH --version 2>&1 | grep 'aws-cli/1.11'; then
+    UPGRADE=true
+  fi
+
+  if [ ! -f "${AWS_COMMAND_PATH}" ] \
+  || ! $AWS_COMMAND_PATH --version 2>&1 > /dev/null \
+  || [ -n "${UPGRADE}" ]; then
+    (
+      flock -n 250
+      set +e
+      # New pip install wanted libyaml so we'll install that before trying
+      # to get the latest AWS cli
+      apt-get update -y
+      apt-get install -y libyaml-dev python-dev python-docutils python-pip
+      #######
+      ## Because:  https://github.com/aws/aws-cli/issues/2999#issuecomment-356019306
+      pip uninstall boto3 -y
+      pip uninstall boto -y
+      pip uninstall botocore -y
+      # Fix bug caused by apt/ubuntu
+      rm -rf /usr/local/lib/python2.7/dist-packages/botocore-*.dist-info
+      pip install botocore --force-reinstall --upgrade
+      #######
+      ## Because: https://github.com/aws/aws-cli/issues/3007#issuecomment-350797161
+      pip install --upgrade s3transfer
+      rm -rf /tmp/pip_build_root/PyYAML
+      pip install awscli --force-reinstall --upgrade
+      rm "${AWS_INSTALL_LOCK_FILE}"
+      set -e
+      # Let the caller test if things went okay
+      exit 0
+    ) 250> "${AWS_INSTALL_LOCK_FILE}"
+  fi
+}
+
+function dev_mode() {
+  if [ -n "${DEVMODE_ENABLED}" ]; then
+    true
+  else
+    false
+  fi
+}
+
+# Usage - fromJson "somejsonstring" "somekey"
+function fromJson() {
+    python -c \
+"import json
+import sys
+
+json_string, json_key = sys.argv[1:]
+try:
+    print json.loads(json_string)[json_key]
+except Exception:
+    print >> sys.stderr, \"This isn't json!\"" \
+    "${1}" "${2}"
+}
+
+# Provide a way for scripts to easily detect if this
+# starphleet instance is storing the containers on S3.
+function is_container_storage_on_s3() {
+
+  if ([ -n "${SERVE_CONTAINERS}" ] || [ -n "${BUILD_CONTAINERS}" ]) \
+  && [ -n "${S3_STORAGE_AWS_ACCESS_KEY_ID}" ] \
+  && [ -n "${S3_STORAGE_AWS_SECRET_ACCESS_KEY}" ] \
+  && [ -n "${S3_STORAGE_BUCKET_REGION}" ] \
+  && [ -n "${S3_STORAGE_BUCKET_PATH}" ]; then
+    return $TRUE
+  fi
+
+  return $FALSE
+}
+
+function run_as_root_or_die(){
+  if [ $(whoami) != "root" ]; then
+    echo "You'll need to be root to do this. Try again as root"
+    exit 1
+  fi
+}
+
+function die_on_error(){
+  trap "error 'script execution halted due to error' >&2" ERR
+  set -e
+}
+
+# environment set up each time we ask for tools
+[ -f "/etc/starphleet" ] && source "/etc/starphleet"
+[ -f "${HEADQUARTERS_ENV}" ] && source "${HEADQUARTERS_ENV}"
+if [ -d /etc/starphleet.d ]; then
+  for env_file in /etc/starphleet.d/*
+  do
+    test -f "${env_file}" && source "${env_file}"
+  done
+fi
+[ -f "${HEADQUARTERS_SOURCE}" ] && source "${HEADQUARTERS_SOURCE}"
+:

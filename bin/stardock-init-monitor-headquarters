@@ -1,0 +1,34 @@
+#!/usr/bin/env stardock-launcher
+# vim:ft=sh
+
+#####################################################################
+# Monitor Headquarters
+#
+# We poll the headquarters (our central config) for updates
+# and when we find updates we take various actions.  The
+# central config has the ability to drop files on the root
+# file system and as such we will restart services on the
+# host OS when configured to do so.  We tell NGINX to hup
+# because there may be implications to the changes inside
+# the proxy to our services
+#####################################################################
+while [ 1 ]; do
+  if [ -n "${HEADQUARTERS_REMOTE}" ]; then
+    if stardock-git-sync "${HEADQUARTERS_REMOTE}" "${HEADQUARTERS_LOCAL}"; then
+      # XXX: Backwards compatability
+      [ -d ${HEADQUARTERS_LOCAL}/overlay ] && cp -R ${HEADQUARTERS_LOCAL}/overlay/* /
+      [ -x ${HEADQUARTERS_LOCAL}/run_this_on_update ] && ${HEADQUARTERS_LOCAL}/run_this_on_update
+
+      run_ship_scripts
+
+      for service in $SERVICES_TO_RESTART_ON_HQ_UPDATE; do
+        systemctl restart "${service}" || true
+      done
+
+      starphleet-hup-nginx
+    fi
+  fi
+  # we'll wait a bit, and fall through allowing our respawn
+  # to start us up again
+  sleep "${STARPHLEET_PULSE}"
+done
