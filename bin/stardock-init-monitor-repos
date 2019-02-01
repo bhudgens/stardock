@@ -1,0 +1,15 @@
+#!/usr/bin/env stardock-launcher
+# vim:ft=sh
+
+#track the publish ports
+unset PUBLISH_PORTS
+declare -a PUBLISH_PORTS
+
+#auto deploy each ordered service, really need to use grep here
+#find doesn't work out on that / pattern
+for order in $(find "${HEADQUARTERS_LOCAL}" | grep '/orders$' | grep -v '/git' )
+do
+  source `which stardock-common`
+  SERVICE_NAME=$(echo "${order}" | sed -e 's[/orders$[[' | sed -e "s[${HEADQUARTERS_LOCAL}/\?[[")
+  stardock-serve-one-order "${SERVICE_NAME}" "wait"
+done

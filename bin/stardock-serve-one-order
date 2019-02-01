@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# vim:ft=sh
+### Usage:
+###    stardock-serve-one-order <service> [<wait>]
+### --help
+###
+### Look through all containers stopped or running and run reaper
+### against any missing a current set of orders
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+die_on_error
+run_as_root_or_die
+
+trace -----------------------
+info checking ${service}
+
+latest_AUTHOR "${HEADQUARTERS_LOCAL}"
+
+#track the publish ports
+unset PUBLISH_PORTS
+declare -a PUBLISH_PORTS
+
+export order="${HEADQUARTERS_LOCAL}/${service}/orders"
+ORDER=$(echo "${order}" | sed -e 's[/orders$[[' | sed -e "s[${HEADQUARTERS_LOCAL}/\?[[")
+#make a place for the orders to be managed while running, this is separate
+#from the order files in the headquarters
+CURRENT_ORDER="${CURRENT_ORDERS}/${ORDER}"
+mkdir -p "${CURRENT_ORDER}"
+
+unset ORDERS_DIFF
+unset DEPLOY_REASON
+unset ORDERS_SHA
+
+# Get the sha of the last change to a directory
+ORDERS_SHA=$(git --git-dir "$HEADQUARTERS_LOCAL/.git" --work-tree "$HEADQUARTERS_LOCAL" \
+                 log -n 1 --pretty=format:%h -- $(dirname "${order}"))
+
+#use git to determine if the orders have changed since the last publish
+if [ -f "${CURRENT_ORDER}/.orders_sha" ]; then
+  DEPLOYED_ORDERS_SHA=$(cat "${CURRENT_ORDER}/.orders_sha")
+  [ "${DEPLOYED_ORDERS_SHA}" = "${ORDERS_SHA}" ] || ORDERS_DIFF="Updated orders"
+else
+  ORDERS_DIFF="New orders"
+fi
+
+[ -n "${ORDERS_DIFF}" ] && DEPLOY_REASON="${ORDERS_DIFF}"
+
+# k, so.  in this scope we don't actually care about the betas BUT
+# we do want it to be an associative array... if we DO NOT explicitly
+# make it associative it will implicitly be created as indexed, if you
+# try to index an indexed (non associative array) with an index like
+# pants-3322 bash will try to perform the arithmetic operation that
+# statement seems to indicate (since indexed arrays expect numeric indicies)
+# pants - 3322 will result in an invalid index and blow chunks.
+# thus we explicitly declare BETAS
+declare -A BETAS
+declare -A REDIRECT_TO
+#run the order as a whole script with the autodeploy function defined above
+#this lets folks get creative in orders files as needed
+unset SERVICE_GIT_URL
+unset UNPUBLISHED
+unset PUBLISH_FROM
+unset REDIRECT_TO_SERVICE
+unset SERVICE_PINNED_TO_CONTAINER
+# Slurp the environment from the orders
+run_orders "${order}"
+if [ -n "${REDIRECT_TO_SERVICE}" ]; then
+  info ${ORDER} is a redirect, nothing to deploy
+  exit 1
+fi
+# If the conditions for the security mode set for this container are not
+# met then we will not deploy this container.
+if ! validate_security; then
+  error "Not Deploying ${order} - Security Not Setup Correctly"
+  exit 1
+fi
+
+
+# The directory we store our local git copy
+LOCAL="${HEADQUARTERS_LOCAL}/${ORDER}/git"
+
+# Git Repo Change
+[ -n "${SERVICE_GIT_URL}" ] && stardock-git-sync "${SERVICE_GIT_URL}" "${LOCAL}" && DEPLOY_REASON="Git Repo Changed"
+
+# Allow the command to be told to deploy regardless
+DEPLOY_REASON="${FORCE_DEPLOY_REASON:-$DEPLOY_REASON}"
+SERVICE_PINNED_TO_CONTAINER="${FORCE_SERVICE_PINNED_TO_CONTAINER:-$SERVICE_PINNED_TO_CONTAINER}"
+
+# Container Time
+if [ -n "${DEPLOY_REASON}" ]; then
+  warn "${DEPLOY_REASON}"
+  echo ${ORDERS_SHA} > "${CURRENT_ORDER}/.orders_sha"
+  # Unpublished containers may not have a service sha
+  # so set a default just-in-case so these containers
+  # deploy even if they don't have an 'autodeploy'
+  [ -n "${UNPUBLISHED}" ] && SERVICE_SHA="d000000"
+  if [ -d "${LOCAL}" ]; then
+    get_CURRENT_SHA "${LOCAL}"
+    SERVICE_SHA="${CURRENT_SHA}"
+  fi
+
+  #sha for both the service and the orders asking for it, changing either
+  #of these starts up a new container that will run in parallel with prior
+  #versions
+  if [ -z "${ORDER}" ] \
+  || [ -z "${ORDERS_SHA}" ] \
+  || [ -z "${SERVICE_SHA}" ]; then
+    warn "Critical Info Missing - Not Deploying Container:  O: ${ORDER} OS: ${ORDERS_SHA} SS:${SERVICE_SHA}"
+    exit 1
+  fi
+
+  # This allows the user to pin a service to a specific container
+  # if this server is purely a "serve" starphleet server
+  #if is_container_storage_on_s3 \
+  #&& [ -n "${SERVICE_PINNED_TO_CONTAINER}" ]; then
+    #if [ -z "${BUILD_CONTAINERS}" ] \
+    #|| [ -f "/var/lib/lxc/${SERVICE_PINNED_TO_CONTAINER}.serve_only_override" ]; then
+      #warn Overriding CONTAINER_NAME with "${SERVICE_PINNED_TO_CONTAINER}"
+      #CONTAINER_NAME="${SERVICE_PINNED_TO_CONTAINER}"
+    #fi
+  #fi
+
+  info "Starting ${ORDER}: ${CONTAINER_NAME}"
+  if [ -n "${wait}" ]; then
+    parallel --semaphore --semaphorename stardock-serve-one-order --jobs ${MAX_CONCURRENT_CONTAINER_BUILDS:-25} start "${STARDOCK_BIN}/stardock-init-serve-order" "${CONTAINER_NAME}" "${ORDER}"
+  else
+    start "${STARDOCK_BIN}/stardock-init-serve-order" "${CONTAINER_NAME}" "${ORDER}" &
+  fi
+fi

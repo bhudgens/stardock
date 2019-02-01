@@ -1,4 +1,4 @@
-# vim: set ft=sh : #main include file for starphleet scripts
+# vim: set ft=sh
 
 ulimit -n ${MAX_OPEN_FILES} > /dev/null
 
@@ -91,7 +91,7 @@ function mail_log()
     latest_AUTHOR "${ORDER_LOCAL}"
     cat /var/log/upstart/${UPSTART_JOB}-${name}.log \
     | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g" \
-    | mail -s "Starphleet Build Failure: ${name}" "${AUTHOR}"
+    | mail -s "Stardock Build Failure: ${name}" "${AUTHOR}"
   fi
 }
 
@@ -114,7 +114,7 @@ export FALSE=1;
 
 
 # All the rules that surround the supported security measures
-# for starphleet.  For instance, if a certain security feature
+# for stardock.  For instance, if a certain security feature
 # has constraints, needs certain settings or files, or needs various
 # conditions to exist they should be tested here.  The environment,
 # when this is called should be "expected" to have everything we need.
@@ -122,7 +122,7 @@ export FALSE=1;
 # security measure something is wrong.
 function validate_security() {
 
-  # SECURITY_MODE is set in the default starphleet config.  If it gets unset
+  # SECURITY_MODE is set in the default stardock config.  If it gets unset
   # something went wrong so let the user know
   if ! echo "${SECURITY_MODE}" | egrep 'htpasswd|jwt|ldap|public' > /dev/null; then
     error "Invalid security mode: [${SECURITY_MODE}]";
@@ -181,10 +181,18 @@ function validate_security() {
   return ${FALSE}
 }
 
+function get_container_ip() {
+  # TODO: Install JQ and do that instead
+  docker container inspect "${1}" \
+    | grep '"IP Address"' \
+    | tail -n 1 \
+    | cut -f4 -d '"'
+}
+
 function run_orders()
 {
   # These two commands only exist inside the container.
-  # they are not built into starphleet, and instead, are
+  # they are not built into stardock, and instead, are
   # pulled from S3.  We don't want them to error if the
   # orders file is sourced when the commands don't exist
   # ...for example, on the host machine.
@@ -310,7 +318,7 @@ function run_orders()
 #Load up BRIDGE_IP with the address of the bridge loopback. This is the
 #way to easily let containers speak to the ship
 function bridge_ip() {
-  BRIDGE_IP=$(ifconfig | grep -A 1 'lxcbr0' | tail -1 | cut -d ':' -f 2 | cut -d ' ' -f 1)
+  BRIDGE_IP=$(docker network inspect bridge | grep '"Gateway":' | cut -f4 -d'"')
 }
 
 #set the environment up for the app_root and orders
@@ -319,6 +327,11 @@ function container_environment() {
   run_orders ${2}
   for file in ${1}/.profile.d/*; do source ${file}; done
   export PATH=${PATH}:/usr/local/bin
+}
+
+function guards() {
+  [ -z "${STARDOCK_ROOT}" ] && fatal "STARDOCK_ROOT required"
+  [ ! -d "${STARDOCK_ROOT}" ] && fatal "STARDOCK_ROOT dir doesn't exist"
 }
 
 # Handle all the buggy details of installing a modern
@@ -390,7 +403,7 @@ except Exception:
 }
 
 # Provide a way for scripts to easily detect if this
-# starphleet instance is storing the containers on S3.
+# stardock instance is storing the containers on S3.
 function is_container_storage_on_s3() {
 
   if ([ -n "${SERVE_CONTAINERS}" ] || [ -n "${BUILD_CONTAINERS}" ]) \
@@ -416,14 +429,39 @@ function die_on_error(){
   set -e
 }
 
-# environment set up each time we ask for tools
+# Override system
+#   - Defaults in /etc
+#   - Then Phleet configs from HQ
+#   - Then machine specific in /etc/stardock.d
+#   - Support "new" CACHE dir (so we don't need to be installed to machine)
+#   - We slurp in the HQ GitHub location last
+# XXX: Legacy Support for Starphleet
 [ -f "/etc/starphleet" ] && source "/etc/starphleet"
+[ -f "/etc/stardock" ] && source "/etc/stardock"
 [ -f "${HEADQUARTERS_ENV}" ] && source "${HEADQUARTERS_ENV}"
+
+# XXX: Legacy Support for Starphleet
+[ -f "${HEADQUARTERS_LOCAL}/.starphleet" ] && source "${HEADQUARTERS_LOCAL}/.starphleet"
 if [ -d /etc/starphleet.d ]; then
   for env_file in /etc/starphleet.d/*
   do
     test -f "${env_file}" && source "${env_file}"
   done
 fi
+
+if [ -d /etc/stardock.d ]; then
+  for env_file in /etc/stardock.d/*
+  do
+    test -f "${env_file}" && source "${env_file}"
+  done
+fi
+
+if [ -d "${STARDOCK_CACHE}/config/stardock.d" ]; then
+  for env_file in "${STARDOCK_CACHE}"/config/stardock.d/*
+  do
+    test -f "${env_file}" && source "${env_file}"
+  done
+fi
+
 [ -f "${HEADQUARTERS_SOURCE}" ] && source "${HEADQUARTERS_SOURCE}"
 :

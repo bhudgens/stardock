@@ -25,10 +25,10 @@ while [ 1 ]; do
         systemctl restart "${service}" || true
       done
 
-      starphleet-hup-nginx
+      "${STARDOCK_BIN}/stardock-hup-nginx"
     fi
   fi
   # we'll wait a bit, and fall through allowing our respawn
   # to start us up again
-  sleep "${STARPHLEET_PULSE}"
+  sleep "${STARDOCK_PULSE}"
 done

@@ -1,0 +1,123 @@
+#!/usr/bin/env stardock-launcher
+# vim:syn=sh
+### Usage:
+###    stardock-containerize <git_url> <container_name> <orders_dir>
+### --help
+###
+### Make a new container for a git repository service.
+### This uses Heroku buildpacks, and will detect how to create your
+### container automatically.
+###
+### Once this script is done, you will have a running container.
+###
+### The container will have a layout with the following special directories:
+### ${HOME}/app - Your git repository will be here
+### ${HOME}/start - This is the Heroku style start script
+
+#places for things to live
+STARDOCK_BASE="${STARDOCK_BASE:-stardock-base}"
+
+ORDERS="${orders_dir}/orders"
+
+#build script for our service container, the most important thing is that
+#it gets the source from git
+#the second most important thing is to know that this runs on the container
+CONTAINER_BUILD_SCRIPT=${STARDOCK_TMP}/${container_name}.build
+
+# Load the launcher in the build script
+cat << EOF > ${CONTAINER_BUILD_SCRIPT}
+#!/usr/bin/env ${STARDOCK_ROOT}/bin/stardock-launcher
+EOF
+
+# This is intentionally unescaped using syntax like:
+# cat << 'EOF' > $file
+# Note the single quotes around EOF.  Read more here:
+#  http://glg.link/xZHFBw
+cat << 'EOF' >> ${CONTAINER_BUILD_SCRIPT}
+set -e
+source ${STARDOCK_ROOT}/bin/stardock-common
+trace app will be in ${HOME}/app
+export APP_IN=${HOME}/app
+EOF
+
+# This is intentionally unescaped using syntax like:
+# cat << 'EOF' > $file
+# Note the single quotes around EOF.  Read more here:
+#  http://glg.link/xZHFBw
+cat << 'EOF' >> ${CONTAINER_BUILD_SCRIPT}
+trace Preparing SSH
+#buildpacks may pull git and need ssh identity
+sudo stardock-git-config ${STARDOCK_APP_USER} > /tmp/gitsshconfig
+export GIT_SSH=/tmp/gitssh
+echo "ssh -F /tmp/gitsshconfig \$@" > /tmp/gitssh
+chmod +x /tmp/gitssh
+EOF
+
+#now -- this is escaped, lots of variables included from this script
+cat << EOF >> ${CONTAINER_BUILD_SCRIPT}
+
+trace Fetching service to \${APP_IN}
+
+if [ "${git_url}" != "-" ]; then
+  if dev_mode; then
+    trace Local Dev mode
+    # Some developers may wish to unbind the GIT directory to the actual app
+    # deployment directory so that packages do not mangle their working git
+    # directory.  Supporting both behaviors.
+    if [ -d "${HEADQUARTERS_LOCAL}/${order}/git" ]; then
+      if [ -n "${DEVMODE_UNBIND_GIT_DIR}" ]; then
+        sudo rsync -rlKt "${HEADQUARTERS_LOCAL}/${order}/git/" \${APP_IN}/ || true
+        sudo chown -R ubuntu:ubuntu \${APP_IN} || true
+      else
+        sudo chown -R ubuntu:ubuntu "${HEADQUARTERS_LOCAL}/${order}/git"
+        ln -s "${HEADQUARTERS_LOCAL}/${order}/git" \${APP_IN} || true
+      fi
+    fi
+  else
+    stardock-git-sync "${git_url}" \${APP_IN}
+  fi
+fi
+
+trace Running orders
+export ORDERS_NAME="$(basename $(dirname $ORDERS))"
+run_orders ${ORDERS}
+
+trace Prepping container
+[ -x ${orders_dir}/on_containerize ] && sudo -E ${orders_dir}/on_containerize
+
+
+trace Fetching buildpacks
+#set up a place onboard for possible custom buildpacks
+mkdir -p "\${HOME}/build"
+rsync -az "${BUILDPACKS}/" "\${HOME}/build/buildpacks"
+if [ "${git_url}" == "-" ]; then
+  sudo stardock-git-sync "https://github.com/wballard/null-buildpack.git"  "\${HOME}/build/buildpacks/ZZZ-NULL"
+fi
+
+EOF
+
+#now hand off to buildstep builder
+cat << EOF >> ${CONTAINER_BUILD_SCRIPT}
+trace Running buildpack
+if [ -n "\${BUILDPACK_CACHE_DIR}" ]; then
+  trace Buildpack caching is enabled
+  sudo mkdir -p "\${BUILDPACK_CACHE_DIR}"
+  sudo chown -R ${STARDOCK_APP_USER}:${STARDOCK_APP_USER} "\${BUILDPACK_CACHE_DIR}"
+fi
+
+trace Calling Builder
+builder ${ORDERS}
+
+trace Calling Cronner
+cronner ${orders_dir} ${ORDERS}
+
+trace Post-prepping container
+[ -x ${orders_dir}/after_containerize ] && sudo -E ${orders_dir}/after_containerize
+
+trace Container ready
+
+EOF
+
+info building ${container_name}
+#and now, actually make the container for your application
+"${STARDOCK_BIN}/stardock-containermake" --run "${container_name}" "${CONTAINER_BUILD_SCRIPT}" "${STARDOCK_BASE}"

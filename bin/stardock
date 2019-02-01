@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
 #set -x
 
 ###################################################################
@@ -19,9 +21,6 @@ function punt() {
   exit 1
 }
 
-if ! which stardock-launcher > /dev/null; then
-  punt "Environment not loaded"
-fi
 
 ###################################################################
 ## Runs a sub process and keeps track of it

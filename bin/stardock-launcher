@@ -1,31 +1,15 @@
 #! /usr/bin/env bash
 # vim:ft=sh
 set -x
-function abspath {
-  if [ -d "${1}" ]; then
-    echo "${1}"
-  elif [ -e "${1}" ]; then
-    echo $(readlink -e "${1}" | xargs dirname)
-  else
-    echo "$1" does not exist! >&2
-    return 127
-  fi
-}
-
-
-# traditionallly this would be dynamic, but it's really just starphleet here
-COMMAND_DIR=$(abspath ${1})
-COMMAND_PATH=$(readlink -e ${1})
-export DIR="${COMMAND_DIR}"
-export SCRIPT_DIR="${COMMAND_DIR}"
-# throw away our self reference
-shift
+export SCRIPT_DIR="${DIR}"
+export COMMAND_PATH="${DIR}/$(basename $0)"
 
 # we want our 'globals' to get loaded, and all be exported for use
 # in our called script
 set -a
 source ${DIR}/stardock-defaults
 source ${DIR}/stardock-common
+guards
 set +a
 
 # handle our docopt validation
@@ -35,6 +19,3 @@ set -a
 eval "$(${DIR}/docopts -h "$help" : "$@")"
 set +a
 
-# execute our command!
-trace "${COMMAND_PATH}" "$@"
-bash "${COMMAND_PATH}" "$@"

@@ -15,18 +15,14 @@ LogLevel quiet
 UserKnownHostsFile /dev/null
 EOF
 
-if [ -d "${PRIVATE_KEYS}" ]; then
-  for key in $(find "${PRIVATE_KEYS}"); do
-    if [ -f "${key}" ]; then
-      get_HASH "${key}${USER}"
-      if grep "PRIVATE KEY" "${key}" > /dev/null; then
-        if [ ! -f /var/tmp/${HASH} ]; then
-          cp "${key}" /var/tmp/${HASH}
-          chown ${USER}:${USER} /var/tmp/${HASH}
-          chmod 0400 /var/tmp/${HASH}
-        fi
-        echo "IdentityFile /var/tmp/${HASH}"
-      fi
+if [ -f "${STARDOCK_PRIVATE_KEY}" ]; then
+  get_HASH "${STARDOCK_PRIVATE_KEY}${USER}"
+  if grep "PRIVATE KEY" "${STARDOCK_PRIVATE_KEY}" > /dev/null; then
+    if [ ! -f /var/tmp/${HASH} ]; then
+      cp "${key}" /var/tmp/${HASH}
+      chown ${USER}:${USER} /var/tmp/${HASH}
+      chmod 0400 /var/tmp/${HASH}
     fi
-  done
+    echo "IdentityFile /var/tmp/${HASH}"
+  fi
 fi

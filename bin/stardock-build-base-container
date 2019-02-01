@@ -1,0 +1,11 @@
+#! /usr/bin/env bash
+### Usage:
+###    stardock-build-base-container
+### --help
+###
+### This will build the container $STARDOCK_BASE from which all
+### of the service containers will descend
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+"${STARDOCK_BIN}/stardock-containermake" "${STARDOCK_BASE}" "${STARDOCK_BIN}/stardock-base-container-default-script"
