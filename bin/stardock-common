@@ -318,7 +318,7 @@ function run_orders()
 #Load up BRIDGE_IP with the address of the bridge loopback. This is the
 #way to easily let containers speak to the ship
 function bridge_ip() {
-  BRIDGE_IP=$(docker network inspect bridge | grep '"Gateway":' | cut -f4 -d'"')
+  BRIDGE_IP=$(docker network inspect "${STARDOCK_NETWORK_NAME}" | grep '"Gateway":' | cut -f4 -d'"')
 }
 
 #set the environment up for the app_root and orders
