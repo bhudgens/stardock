@@ -13,7 +13,7 @@ die_on_error
 run_as_root_or_die
 
 trace -----------------------
-info checking ${service}
+info "serve-one-order|checking:${service}"
 
 latest_AUTHOR "${HEADQUARTERS_LOCAL}"
 
