@@ -107,9 +107,11 @@ if [ -n "${DEPLOY_REASON}" ]; then
   #sha for both the service and the orders asking for it, changing either
   #of these starts up a new container that will run in parallel with prior
   #versions
-  if [ -z "${ORDER}" ] \
-  || [ -z "${ORDERS_SHA}" ] \
-  || [ -z "${SERVICE_SHA}" ]; then
+  if [ -n "${ORDER}" ] \
+  && [ -n "${ORDERS_SHA}" ] \
+  && [ -n "${SERVICE_SHA}" ]; then
+    CONTAINER_NAME="${ORDER}-${ORDERS_SHA}-${SERVICE_SHA}"
+  else
     warn "Critical Info Missing - Not Deploying Container:  O: ${ORDER} OS: ${ORDERS_SHA} SS:${SERVICE_SHA}"
     exit 1
   fi
