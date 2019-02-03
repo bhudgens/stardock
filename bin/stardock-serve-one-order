@@ -93,7 +93,7 @@ SERVICE_PINNED_TO_CONTAINER="${FORCE_SERVICE_PINNED_TO_CONTAINER:-$SERVICE_PINNE
 
 # Container Time
 if [ -n "${DEPLOY_REASON}" ]; then
-  warn "${DEPLOY_REASON}"
+  warn "serve-one-order|reason:${DEPLOY_REASON}"
   echo ${ORDERS_SHA} > "${CURRENT_ORDER}/.orders_sha"
   # Unpublished containers may not have a service sha
   # so set a default just-in-case so these containers
