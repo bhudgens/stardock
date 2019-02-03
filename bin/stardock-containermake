@@ -60,7 +60,8 @@ info "containermake|creating:${CONTAINER_NAME}"
 #
 # If, "SERVE_CONTAINERS" is set then we'd ONLY want to continue with
 # the old code if we 'also' had BUILD_CONTAINERS set.
-if [ -z "${SERVE_CONTAINERS}" ]; then
+if [ -z "${SERVE_CONTAINERS}" ] \
+|| [ -n "${BUILD_CONTAINERS}" ]; then
 
   # No matter what, we will need the bridge ip
   # of the docker install of this machine
@@ -70,15 +71,24 @@ if [ -z "${SERVE_CONTAINERS}" ]; then
   # Things we do for building a base container.  This is basically
   # a container all other containers are based on
   # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  info "containermake|building:${CONTAINER_NAME}"
   if [ -z "${base_container_name}" ]; then
-    info "Creating Base container"
+
+    info "containermake|base_container:${CONTAINER_NAME}"
     # Get the IP to the Docker Bridge
     docker create -it \
      -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
      --add-host="localship:${BRIDGE_IP}" \
      --name "${CONTAINER_NAME}" ubuntu:trusty
 
+    docker_exec "mkdir -p ${STARDOCK_ROOT}"
+    docker_exec "mkdir -p ${STARDOCK_BIN}"
+    docker_exec 'mkdir -p $(dirname '"${STARDOCK_PRIVATE_KEY}"')'
+    docker_exec "mkdir -p /etc/stardock.d"
+
     STARDOCK_FILES_TO_CP="
+      ${STARDOCK_PRIVATE_KEY}
+      ${STARDOCK_ROOT}/.config
       ${STARDOCK_BIN}/stardock-git-config
       ${STARDOCK_BIN}/stardock-git-sync
       ${STARDOCK_BIN}/stardock-common
@@ -87,33 +97,59 @@ if [ -z "${SERVE_CONTAINERS}" ]; then
       ${STARDOCK_BIN}/stardock-cronner
       ${STARDOCK_BIN}/stardock-runner
       ${STARDOCK_BIN}/stardock-builder
+      ${STARDOCK_BIN}/stardock-git
       ${STARDOCK_BIN}/packages
       ${STARDOCK_BIN}/docopts
       ${STARDOCK_BIN}/docopt.py
     "
-
-    docker_exec "mkdir -p /etc/stardock.d"
-
-    docker_exec "mkdir -p ${STARDOCK_BIN}"
     for file in $STARDOCK_FILES_TO_CP; do
       docker_cp "$file" "$file"
     done
 
-    # TODO: Need all this
-    # docker_exec "apt-get update -y"
-    # docker_exec 'DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --force-yes'
-    # docker_exec 'apt-get -y install --force-yes $(< '"${STARDOCK_BIN}/packages"')'
+    info "containermake|usercreation:${CONTAINER_NAME}"
+    docker_exec "chmod 777 /var/log/"
+    docker_exec "useradd -s /bin/bash ${STARDOCK_APP_USER} || true"
+    docker_exec "adduser ${STARDOCK_APP_USER} sudo"
+    docker_exec "mkdir -p /home/${STARDOCK_APP_USER}/.ssh"
+    docker_exec "echo -e '${STARDOCK_APP_USER} ALL=NOPASSWD:ALL' >> /etc/sudoers"
+
+    docker_exec "apt-get update -y"
+    docker_exec 'DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --force-yes'
+    docker_exec 'apt-get -y install --force-yes $(< '"${STARDOCK_BIN}/packages"')'
   else
-    info "Creating Docker Container"
     # Get the IP to the Docker Bridge
     docker create -it \
      -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
      --add-host="localship:${BRIDGE_IP}" \
      --name "${CONTAINER_NAME}" ${base_container_name}:latest
-  fi
 
-  # We need to persist where Stardock is installed inside the container
-  docker_exec "echo export STARDOCK_ROOT='${STARDOCK_ROOT}' > /etc/stardock.d/STARDOCK_ROOT"
+    # XXX: WE WANT TO DELETE THIS WHEN DONE DEV'ING
+    ##########################################################
+    # docker_exec 'mkdir -p $(dirname '"${STARDOCK_PRIVATE_KEY}"')'
+    # docker_exec "mkdir -p /etc/stardock.d"
+    #
+    # STARDOCK_FILES_TO_CP="
+    #   ${STARDOCK_PRIVATE_KEY}
+    #   ${STARDOCK_ROOT}/.config
+    #   ${STARDOCK_BIN}/stardock-git
+    #   ${STARDOCK_BIN}/stardock-git-config
+    #   ${STARDOCK_BIN}/stardock-git-sync
+    #   ${STARDOCK_BIN}/stardock-common
+    #   ${STARDOCK_BIN}/stardock-defaults
+    #   ${STARDOCK_BIN}/stardock-launcher
+    #   ${STARDOCK_BIN}/stardock-cronner
+    #   ${STARDOCK_BIN}/stardock-runner
+    #   ${STARDOCK_BIN}/stardock-builder
+    #   ${STARDOCK_BIN}/packages
+    #   ${STARDOCK_BIN}/docopts
+    #   ${STARDOCK_BIN}/docopt.py
+    # "
+    # for file in $STARDOCK_FILES_TO_CP; do
+    #   docker_cp "$file" "$file"
+    # done
+    ##########################################################
+
+  fi
 
   # XXX: This functionality doesn't make sense if containers
   #      are built on machine that is not SERVING the container
@@ -132,32 +168,28 @@ if [ -z "${SERVE_CONTAINERS}" ]; then
   # be around yet so we can skip the HQ sync
   if [ -n "${base_container_name}" ] \
   && [ -n "${order}" ]; then
-    info "Syncing Headquarters To Container"
+    info "containermake|headquarters_sync:${CONTAINER_NAME}"
     # We want to create an HQ that we're gonna copy into
     # the container but we wanna strip out all the git
     # repos and only copy in _this_ one
     HQ_TMP_DEST="/tmp/${CONTAINER_NAME}.hq"
     mkdir -p "${HQ_TMP_DEST}"
-    rsync -ra --exclude="git/" "${HEADQUARTERS_LOCAL}/" "${HQ_TMP_DEST}"
+    rsync -ra --exclude="git/" "${HEADQUARTERS_LOCAL}/" "${HQ_TMP_DEST}/"
     # Unpublished containers might not deploy code.
     if [ -d "${HEADQUARTERS_LOCAL}/${order}/git/" ]; then
-      rsync -ra "${HEADQUARTERS_LOCAL}/${order}/git/" "${HQ_TMP_DEST}${order}/git/"
+      rsync -ra "${HEADQUARTERS_LOCAL}/${order}/git/" "${HQ_TMP_DEST}/${order}/git/"
     fi
     docker_cp "${HQ_TMP_DEST}" "${HEADQUARTERS_LOCAL}"
   fi
 
   #this is the build script for the container itself
-  info Setting up the build script inside the container
+  info "containermake|build_script_setup:${CONTAINER_NAME}"
   #start up the container, waiting for the network, and then run the container build script
 
   #host file updates
-  info "Setting up users inside container"
-  docker_exec "chmod 777 /var/log/"
-  docker_exec "useradd -s /bin/bash ${STARDOCK_APP_USER} || true"
-  docker_exec "adduser ${STARDOCK_APP_USER} sudo"
-  docker_exec "mkdir -p /home/${STARDOCK_APP_USER}/.ssh"
-  docker_exec "chown -R ${STARDOCK_APP_USER}:${STARDOCK_APP_USER} /home/${STARDOCK_APP_USER}/.ssh"
-  docker_exec "echo -e '${STARDOCK_APP_USER} ALL=NOPASSWD:ALL' >> /etc/sudoers"
+  docker_exec "mkdir -p /home/${STARDOCK_APP_USER}/build"
+  docker_cp "${BUILDPACKS}" "/home/${STARDOCK_APP_USER}/build"
+  docker_exec "chown -R ${STARDOCK_APP_USER}:${STARDOCK_APP_USER} /home/${STARDOCK_APP_USER}"
 
   BUILD_SCRIPT_FULL_PATH="${STARDOCK_BIN}/build_script"
   docker_cp "${build_script}" "${BUILD_SCRIPT_FULL_PATH}"
