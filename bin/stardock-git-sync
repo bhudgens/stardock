@@ -52,8 +52,8 @@ if [ -d "${local}/.git" ]; then
   HAS_CHANGES=$(git diff HEAD...origin/${CURRENT_BRANCH} --raw)
   if [ "${HAS_CHANGES}x" != "x" ]; then
     warn new code detected, pulling
-    stardock-git fetch || fatal error during fetch of latest code
-    stardock-git reset --hard origin/${CURRENT_BRANCH} || fatal pull error
+    "${DIR}/stardock-git" fetch || fatal error during fetch of latest code
+    "${DIR}/stardock-git" reset --hard origin/${CURRENT_BRANCH} || fatal pull error
     exit 0
   fi
   GIT_STATUS=$(git status)
@@ -71,7 +71,7 @@ if [ -d "${local}/.git" ]; then
   fi
 else
   warn ${local} not found, initial clone needed from "${REMOTE}" to "${local}"
-  stardock-git clone -b ${BRANCH} "${REMOTE}" "${local}" || fatal clone error
+  "${DIR}/stardock-git" clone -b ${BRANCH} "${REMOTE}" "${local}" || fatal clone error
   exit 0
 fi
 
