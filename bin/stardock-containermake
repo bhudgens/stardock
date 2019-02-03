@@ -33,7 +33,7 @@ LOCK_FILE=${CONTAINER_NAME}
 flock 200
 
 function docker_exec() {
-  docker start "${container_name}" \
+  docker start "${container_name}" > /dev/null \
   && docker exec \
     "${container_name}" /bin/bash -c "$@"
 }
@@ -41,17 +41,17 @@ function docker_exec() {
 function docker_cp() {
   if [ -d "$1" ] \
   || [ -f "$1" ]; then
-    docker start "${container_name}" \
+    docker start "${container_name}" > /dev/null \
       && docker cp "$1" "${container_name}:$2"
   fi
 }
 
 if docker images | egrep "^${container_name}$" > /dev/null; then
-  info container exists
+  warn "containermake|exists:${CONTAINER_NAME}"
   exit 0
 fi
 
-info making a new container ${CONTAINER_NAME}
+info "containermake|creating:${CONTAINER_NAME}"
 
 # If SERVE_CONTAINERS is _not_ set - we would always want to fall back to
 # default behavior (behavior before introducing container storage).  This
