@@ -23,13 +23,14 @@ trap 'cd "${STARTING_DIRECTORY}"' EXIT
 reclone () {
   cd ..
   rm -rf "${local}"
-  stardock-git clone -b ${BRANCH} "${REMOTE}" "${local}" || fatal clone error
+  "${DIR}/stardock-git" clone -b ${BRANCH} "${REMOTE}" "${local}"
+  if [ $? -gt 0 ]; then
+    fatal clone error
+  fi
 }
 
-dev_mode && [ -d "${local}/.git" ] && exit 1
-
 if [ -d "${local}/.git" ]; then
-  info synch ${remote} to ${local}
+  info "git-sync|remote:${remote}|to:${local}"
   cd "${local}"
   #make sure we have the correct repository and branch
   ORIGIN_URL=$(git config remote.origin.url)
@@ -39,7 +40,7 @@ if [ -d "${local}/.git" ]; then
     reclone
     exit 0
   else
-    stardock-git fetch --all &> /dev/null || fatal fetch error
+    "${DIR}/stardock-git" fetch --all &> /dev/null || fatal fetch error
   fi
   CURRENT_BRANCH=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
   if [ "${BRANCH}" != "${CURRENT_BRANCH}" ]; then
