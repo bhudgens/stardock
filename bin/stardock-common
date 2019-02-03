@@ -329,9 +329,35 @@ function container_environment() {
   export PATH=${PATH}:/usr/local/bin
 }
 
+function is_running_in_container() {
+  [ -f "/.dockerenv" ]
+}
+
 function guards() {
+  # We absolutely need STARDOCK_ROOT set
   [ -z "${STARDOCK_ROOT}" ] && fatal "STARDOCK_ROOT required"
+  # ...and it needs to be a directory
   [ ! -d "${STARDOCK_ROOT}" ] && fatal "STARDOCK_ROOT dir doesn't exist"
+  # If commands are running from somewhere other than STARDOCK_BIN then
+  # it's likely they are not running from an 'installed' version of
+  # stardock.  We do not want that because it's likely the environment
+  # is not accurately setup.  They can set "STARPHLEET_ROOT" before whatever
+  # they are doing if they really wanna avoid this error.
+  [ "${DIR}" != "${STARDOCK_BIN}" ] \
+    && fatal "This command is not running from ${STARDOCK_BIN} - Is stardock installed?  Environment set?"
+
+  # We wouldn't want to check these 'inside' a container
+  if ! is_running_in_container; then
+  # There are some fundamental requirements for Stardock to work
+    if ! which docker           > /dev/null \
+    || ! which jq               > /dev/null ; then
+      fatal "
+      You must install the following programs to run Stardock:
+        docker
+        jq
+      "
+    fi
+  fi
 }
 
 # Handle all the buggy details of installing a modern
