@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+### Usage:
+###    stardock-install-default-buildpacks
+### --help
+###
+### Install the default buildpacks into our cache dir
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+die_on_error
+
+function buildpack_urls() {
+cat << EOF
+https://github.com/igroff/heroku-buildpack-ruby.git#starphleet
+https://github.com/igroff/heroku-buildpack-python.git#starphleet
+https://github.com/igroff/heroku-buildpack-nodejs.git#starphleet
+https://github.com/wballard/nginx-buildpack.git
+EOF
+}
+
+mkdir -p "${BUILDPACKS}"
+
+pushd "${BUILDPACKS}" > /dev/null
+for buildpack_url in $(buildpack_urls); do
+  # Grab the name from:
+  # https://github.com/igroff/--> (heroku-buildpack-nodejs) <-- here .git#starphleet
+  BUILD_PACK_NAME=$(echo $buildpack_url | perl -pe 's|.*github.com[/:]*.*?/(.*)\.git.*|$1|')
+  if [ ! -d "${BUILD_PACK_NAME}" ]; then
+    "${DIR}/stardock-git-sync" "${buildpack_url}" "${BUILD_PACK_NAME}" || true
+  fi
+done
+popd > /dev/null

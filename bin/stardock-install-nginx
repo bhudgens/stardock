@@ -1,0 +1,13 @@
+#! /usr/bin/env bash
+### Usage:
+###    stardock-install-nginx
+### --help
+###
+### Build and install nginx into a container
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+if ! docker image ls --format '{{.Repository}},{{.Tag}}' | grep "^${STARDOCK_NGINX_CONTAINER},"; then
+  "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
+  "${DIR}/stardock-containermake" "${STARDOCK_NGINX_CONTAINER}" "${STARDOCK_BIN}/stardock-scripts-nginx" "${STARDOCK_BASE}"
+fi

@@ -1,0 +1,201 @@
+#!/usr/bin/env stardock-launcher
+### Usage:
+###    starphleet-install
+### --help
+###
+### This will get starphleet on a base machine
+
+run_as_root_or_die
+
+#flush out caches, I know, I know -- but really if you don't do this
+#Linux would rather swap than let go
+sync && echo 3 > /proc/sys/vm/drop_caches
+
+# MOAR PORTS
+echo "10240 65535" > /proc/sys/net/ipv4/ip_local_port_range
+
+# To support a fresh installation but keep the config in the overlay
+# we need access to the default starphleet config. We are going
+# to attempt to slurp it in
+#
+# We declare EC2_DRIVES in case we can't find the overlay config
+declare -A EC2_DRIVES
+# Then try to get the defaults from the starphleet config
+[ -f ../overlay/etc/starphleet ] && source ../overlay/etc/starphleet
+
+# Dynamically build storage devices on EC2.
+#
+# Priority to who gets the space goes something like
+#    /dev/xvdb -> /var/lib/lxc
+#    /dev/xvdc -> /var/starphleet
+#    /dev/xvdd -> /var/log/biglogs
+#
+# Default configuration is in overlay/etc/starphleet
+
+for drive in "${!EC2_DRIVES[@]}"
+do
+  if [ -b "${drive}" ]; then
+    info Setting up ["${drive}"] for [${EC2_DRIVES[$drive]}]
+    # Unmount if mounted
+    umount "${drive}" || true
+    # Format the drive
+    mkfs.ext4 "${drive}"
+    # Mount it where it goes
+    mkdir -p "${EC2_DRIVES[$drive]}"
+
+    if [ "${EC2_DRIVES[$drive]}" != "/var/lib/lxc/data" ]; then
+      tune2fs -O ^has_journal "${drive}"
+    fi
+    mount "${drive}" "${EC2_DRIVES[$drive]}"
+    # Strip any mounts using this device from fstab
+    cat /etc/fstab | grep -v "${drive}" > /tmp/fstab.tmp
+    # Re-add our config to fstab
+    #   Note: There are tabs on purpose in here - be careful
+    echo "${drive}	${EC2_DRIVES[$drive]}	auto	defaults,nobootwait,comment=cloudconfig	0	2" >> /tmp/fstab.tmp
+    # Move the tmp file into place
+    mv /tmp/fstab.tmp /etc/fstab
+  fi
+done
+
+# If we have a mount for syslog we move our syslog to the new mount
+# and symlink back to the old
+if [ -d /var/log/biglogs ] && [ ! -L /var/log/syslog ]; then
+  # Being super defensive.  A condition exists where the symlink
+  # prevented a start.  The bug was reported but not visually confirmed
+  # so might tweak this if I ever run across the bug.
+  stop rsyslog || true
+  [ -f /var/log/syslog ] && mv /var/log/syslog /var/log/biglogs/syslog
+  [ -f /var/log/biglogs/syslog ] && [ ! -L /var/log/syslog ] && ln -s /var/log/biglogs/syslog /var/log/syslog
+  start rsyslog || true
+fi
+#
+#packages
+debconf-set-selections <<< "postfix postfix/mailname string '${SHIP}'"
+debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
+
+# Run Upgrade before before installing packages - which fixes this error
+# https://github.com/lxc/lxc/issues/247
+apt-get update -y
+export DEBIAN_FRONTEND=noninteractive
+apt-get dist-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --force-yes
+apt-get -y install --force-yes $(< "${DIR}/packages")
+
+
+#put in the system overlay, gets all the files in place
+#for the starphleet jobs
+rm -f /etc/init/starphleet*
+${SCRIPT_DIR}/perform-overlay
+
+# Assign larger subnet to LXC iface (config in overlay)
+# but interface requires a restart
+restart lxc-net
+
+# our overlay contains sysctl settings, we'll want to load them now
+sysctl --system
+# the parameters we've just loaded will allow a bunch more
+# connections for netfilter to track, adjust the hashsize
+# to help with performance
+echo 24576 > /sys/module/nf_conntrack/parameters/hashsize
+
+# Machine specific configs
+mkdir -p /etc/starphleet.d
+
+# If starphleet is deployed in a EC2 environment we append the region configuration
+# to the global starphleet config
+STARPHLEET_EC2_REGION=$(curl --connect-timeout 1 -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
+[ ! -z "${STARPHLEET_EC2_REGION}" ] && echo "export STARPHLEET_EC2_REGION=\"${STARPHLEET_EC2_REGION}\"" > /etc/starphleet.d/starphleet_ec2_region
+
+#source again, yep -- now the environment is in place
+source ${DIR}/tools
+
+#this is a provisioning script for the base system/host/vm
+#run as root, with the starphleet source tree at /starphleet
+
+#role account for folks acting as the admiral, do this really early
+#as it will provide the home directory
+# Captain
+make_user "${CAPTAIN}" "${CAPTAIN_HOME}"
+adduser "${CAPTAIN}" adm
+
+# Admiral Only
+make_user "${ADMIRAL}" "${ADMIRAL_HOME}"
+mkdir -p "${STARPHLEET_ROOT}"
+chown -R "${ADMIRAL}":"${ADMIRAL}" "${STARPHLEET_ROOT}"
+adduser "${ADMIRAL}" sudo
+adduser "${ADMIRAL}" adm
+adduser "${ADMIRAL}" root
+
+# Let Captain's see logs
+mkdir -p "/var/log/upstart"
+chgrp adm "/var/log/upstart"
+chmod g+s "/var/log/upstart"
+
+mkdir -p "${LXC_ROOT}"
+chmod 755 "${LXC_ROOT}"
+
+#yep -- international, no fooling
+echo "GMT" > /etc/timezone
+dpkg-reconfigure -f noninteractive tzdata
+
+hostname "${SHIP}"
+echo "${SHIP}" > /etc/hostname
+echo "127.0.0.1 ${SHIP} localhost" > /etc/hosts
+
+pushd ${STARPHLEET_ROOT:-/var/starphleet}/nginx
+set -e
+make
+set +e
+popd
+
+# We will be using bash. period
+rm /bin/sh
+ln /bin/bash /bin/sh
+
+# starphleet lives here
+[ -d ${STARPHLEET_ROOT} ] || mkdir -p ${STARPHLEET_ROOT}
+[ -d ${STARPHLEET_TMP} ] || mkdir -p ${STARPHLEET_TMP}
+chmod 755 ${STARPHLEET_ROOT}
+[ -d ${STARPHLEET_ROOT}/diagnostic ] || mkdir -p ${STARPHLEET_ROOT}/diagnostic
+chmod 755 ${STARPHLEET_ROOT}/diagnostic
+
+# make a place for keys
+test -d ${PRIVATE_KEYS} || mkdir -p ${PRIVATE_KEYS}
+chmod 755 ${PRIVATE_KEYS}
+test -d ${PUBLIC_KEYS} || mkdir -p ${PUBLIC_KEYS}
+chmod 755 ${PUBLIC_KEYS}
+
+#allow passwordless sudoers
+cat > ${ROOT}/etc/sudoers <<'EOF'
+Defaults	env_reset
+Defaults	mail_badpass
+Defaults	secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+root	ALL=(ALL:ALL) ALL
+%admin ALL=(ALL) ALL
+%sudo	ALL=(ALL:ALL) NOPASSWD:ALL
+vagrant ALL=NOPASSWD: ALL
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-attach
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-launcher
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-redeploy
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-retry-deploy
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-start
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-stop
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-status
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-serve-one-order
+captain ALL=(ALL) NOPASSWD: /usr/bin/tail
+captain ALL=(ALL) NOPASSWD: /usr/bin/lxc-ls
+Defaults env_keep="SSH_AUTH_SOCK"
+Defaults !requiretty
+EOF
+
+starphleet-buildpacks
+
+#making base containers as needed, base container serves as the source for
+#and we clone the service container on top, the idea is the base container
+#can be re-used and thus improve build time
+${DIR}/starphleet-build-base-container
+
+starphleet-cleanup
+
+# Start starphleet
+start starphleet
+announce *Welcome to Starphleet*

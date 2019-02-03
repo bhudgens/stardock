@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+### Usage:
+###    stardock-install-docker-network
+### --help
+###
+### If the stardock bridge network hasn't been setup yet
+### configure it in docker
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+die_on_error
+
+# XXX: This is to support legacy starphleet machines
+if ! docker network inspect "${STARDOCK_NETWORK_NAME}" > /dev/null; then
+  docker network create \
+    -o "com.docker.network.bridge.enable_icc"="true" \
+    -o "com.docker.network.bridge.enable_ip_masquerade"="true" \
+    -o "com.docker.network.bridge.host_binding_ipv4"="0.0.0.0" \
+    -o "com.docker.network.driver.mtu"="1500" \
+    -o "com.docker.network.bridge.name"="${STARDOCK_NETWORK_NAME}" \
+    --subnet "${STARDOCK_NETWORK_CIDR}" \
+    --gateway "${STARDOCK_NETWORK_GW}" \
+    "${STARDOCK_NETWORK_NAME}"
+fi

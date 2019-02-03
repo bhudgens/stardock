@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# vim:syn=sh
+### Usage:
+###    stardock-docker-image-destroy <image_name>
+### --help
+###
+### This will stay persistent as long as the container stays running.  We'll
+### run the full lifecycle of the container from here.
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+# Kill any container referencing this image
+for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep "^${image_name},"); do
+  IMAGE_NAME=$(echo $container | cut -f1 -d',')
+  FRIENDLY_NAME=$(echo $container | cut -f2 -d',')
+  docker stop "${FRIENDLY_NAME}" > /dev/null
+  info "killing_container|${FRIENDLY_NAME}"
+  docker rm "${FRIENDLY_NAME}"
+done
+
+# Kill anything with this image name
+for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep ",${image_name}$"); do
+  IMAGE_NAME=$(echo $container | cut -f1 -d',')
+  FRIENDLY_NAME=$(echo $container | cut -f2 -d',')
+  docker stop "${FRIENDLY_NAME}" > /dev/null
+  info "killing_container|${FRIENDLY_NAME}"
+  docker rm "${FRIENDLY_NAME}"
+done
+
+# Now we can kill the actual image
+for image in $(docker image ls --format '{{.Repository}},{{.Tag}}' | egrep "^${image_name},"); do
+  IMAGE_NAME=$(echo $image | cut -f1 -d',')
+  TAG_NAME=$(echo $image | cut -f2 -d',')
+  info "removing_image|${IMAGE_NAME}:${TAG_NAME}"
+  docker rmi "${IMAGE_NAME}:${TAG_NAME}"
+done
