@@ -1,4 +1,4 @@
-#!/usr/bin/env stardock-launcher
+#!/usr/bin/env bash
 # vim:ft=sh
 ### Usage:
 ###    stardock-git-sync <remote> [<local>]
@@ -9,6 +9,8 @@
 ###
 ### This exits 0 if there were changes, 1 if not, easier
 ### to use in a shell script if this way
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
 
 REMOTE=$(echo "${remote//$'\r'/}" | awk -F '#' '{print $1;}')
 BRANCH=$(echo "${remote//$'\r'/}" | awk -F '#' '{print $2;}')
