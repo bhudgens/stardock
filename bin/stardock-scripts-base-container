@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# We wanna die if anything doesn't work out
+set -e
+
 sudo apt-get -y update
 sudo apt-get install -y --force-yes $(cat << FFF
 autoconf
@@ -70,12 +73,23 @@ sudo pip install botocore --force-reinstall --upgrade
 ## Because: https://github.com/aws/aws-cli/issues/3007#issuecomment-350797161
 sudo pip install --upgrade s3transfer
 sudo rm -rf /tmp/pip_build_root/PyYAML
-sudo pip install awscli --force-reinstall --upgrade
 set -e
 
-sudo aws s3 cp s3://glg-deployment-packages/secrets /usr/bin/secrets && echo "...Success"
-sudo chmod +x /usr/bin/secrets
+sudo pip install awscli --force-reinstall --upgrade
+
+# sudo aws s3 cp s3://glg-deployment-packages/secrets /usr/bin/secrets && echo "...Success"
+# Using "http" instead of aws command intentionally here.  The aws command
+# implies the user will implicitely have aws configured - and, we don't
+# want to impose that when we don't need it.
+SECRETS_BIN='/usr/bin/secrets'
+sudo curl -s 'https://s3.amazonaws.com/glg-deployment-packages/secrets' -o "${SECRETS_BIN}" \
+  && echo "download_secrets:success" \
+  || echo "download_secrets:fail"
+sudo chmod +x "${SECRETS_BIN}"
 
 ## ruby superstition
 export HOME=/
 sudo gem install bundler -v 1.16.5
+
+# Since we are set -e we won't see this in the log unless things work out
+echo "base_container_install:success"
