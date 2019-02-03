@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
+### Usage:
+###    stardock
+### --help
+###
+### The primary process to start stardock
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
-#set -x
 
 ###################################################################
 ## List of init jobs we should run
 ###################################################################
 INITS=${INITS:-"
-  ONE
-  TWO
-  THIS-IS-TEST
-  UNDERSCORES_HERE
+  ${DIR}/stardock-init-monitor-repos
 "}
 
 ###################################################################
@@ -28,7 +29,7 @@ function punt() {
 declare -A CHILDREN
 function run_daemon() {
   # run daemon
-  sleep 2 &
+  eval "$1" &
   CHILDREN["$1"]=$!
 }
 
