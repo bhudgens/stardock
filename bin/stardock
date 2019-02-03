@@ -73,7 +73,10 @@ while [ 1 ]; do
       warn "stardock|restarting:${init}"
       run_daemon "${init}"
     fi
-    echo $init:${CHILDREN[$init]}
   done
-  sleep 1
+  sleep "${STARDOCK_PULSE}"
+  sleep 10000000000
+  # XXX: Delete me
+  # echo XXX: DEV EXIT
+  # exit 0
 done
