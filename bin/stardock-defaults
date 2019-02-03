@@ -18,11 +18,20 @@ export HEADQUARTERS_SOURCE="${STARDOCK_RUN}/.headquarters"
 export HEADQUARTERS_LOCAL="${HEADQUARTERS_LOCAL:-${STARDOCK_RUN}/headquarters}"
 export CURRENT_ORDERS="${STARDOCK_RUN}/current_orders"
 
+export STARDOCK_NETWORK_NAME="stardock"
+export STARDOCK_NETWORK_CIDR="10.0.0.0/16"
+export STARDOCK_NETWORK_GW="10.0.0.1"
+
 # Support default set elsewhere
 export HEADQUARTERS_ENV="${HEADQUARTERS_ENV:-${HEADQUARTERS_LOCAL}/.stardock}"
 
+export STARDOCK_NGINX_CONTAINER="stardock-nginx"
+export STARDOCK_NGINX_RUNTIME="${STARDOCK_RUN}/nginx"
+export STARDOCK_NGINX_CONF="${STARDOCK_RUN}/nginx/nginx.conf"
+export STARDOCK_NGINX_BIN="${STARDOCK_RUN}/nginx/nginx"
+
 # Things in our cache
-export STARDOCK_PRIVATE_KEY="${STARDOCK_CACHE}/private.key"
+export STARDOCK_PRIVATE_KEY="${STARDOCK_PRIVATE_KEY:-${STARDOCK_CACHE}/private.key}"
 export NGINX_CONF="${STARDOCK_CACHE}/nginx"
 export LOCAL_ENVIRONMENT="${LOCAL_ENVIRONMENT:-${STARDOCK_CACHE}/local_configs}"
 export BUILDPACKS="${STARDOCK_CACHE}/buildpacks"
@@ -35,10 +44,10 @@ export CAPTAIN="captain"
 export CAPTAIN_HOME="/home/captain"
 
 # If this file exist the hupper will regen the nginx configs and hup nginx
-export STARDOCK_NGINX_HUP_TURD="/var/run/stardock_hup_turd"
+export STARDOCK_NGINX_HUP_TURD="${STARDOCK_RUN}/stardock_hup_turd"
 
 # If this file exist the hupper will 'restart' nginx when done instead of hup
-export STARDOCK_RESTART_NGINX_HUP_TURD="/var/run/stardock_restart_hup_turd"
+export STARDOCK_RESTART_NGINX_HUP_TURD="${STARDOCK_RUN}/stardock_restart_hup_turd"
 export MAX_OPEN_FILES="4096"
 if [ "${TERM}" == "unknown" ]; then
   export TERM="xterm-256color"
