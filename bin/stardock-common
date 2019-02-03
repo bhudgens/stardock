@@ -129,7 +129,7 @@ function validate_security() {
     return ${FALSE};
   fi
 
-  info Security Mode: ${SECURITY_MODE}
+  info "common|security_mode:${SECURITY_MODE}"
 
   ################
   # LDAP Rules
@@ -207,7 +207,7 @@ function run_orders()
   fi
 
   autodeploy () {
-    info autodeploy from "${1}"
+    info "common|autodeploy:${1}"
     [ -n "${AUTODEPLOY}" ] && echo "${1}" > "${AUTODEPLOY}"
     SERVICE_GIT_URL="${1}"
   }
