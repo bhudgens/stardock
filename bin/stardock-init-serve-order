@@ -9,15 +9,16 @@
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
-
+die_on_error
+run_as_root_or_die
 
 ##########################################################################
 ## Pre-Start - Setup and Build the Container
 ##########################################################################
-info "Building ${name}"
+info "init-serve-order|building:${name}"
 
 ORDER_LOCAL="${HEADQUARTERS_LOCAL}/${order}/git"
-STATUS_FILE="${CURRENT_ORDERS}/${order}/.starphleetstatus.${name}"
+STATUS_FILE="${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"
 
 run_orders "${HEADQUARTERS_LOCAL}/${order}/orders"
 
@@ -30,12 +31,13 @@ fi
 LAST_KNOWN_GOOD_CONTAINER=$(cat "${CURRENT_ORDERS}/${order}/.last_known_good_container" || true)
 # this will give us the container name of the LKG ONLY IF the system has the
 # container
-DO_WE_HAVE_THE_LKG=$(lxc-ls | grep "^${LAST_KNOWN_GOOD_CONTAINER}$" || true)
+DO_WE_HAVE_THE_LKG=$(docker container ls -a --format '{{.Image}}' | grep "^${LAST_KNOWN_GOOD_CONTAINER}$" || true)
 
 # this 'use existing container' step is simply for optimizing restart of the
 # LAST container we used, so we check to see if we're being asked to use the
 # LKG and that we do indeed HAVE the LKG
 if [ "${name}" == "${LAST_KNOWN_GOOD_CONTAINER}" -a "${name}" == "${DO_WE_HAVE_THE_LKG}" ]; then
+  warn "init-serve-order|existing_container:${name}"
   # TODO: Implement a LKG / Docker style
   # warn "using existing container ${name}"
   # lxc-start --name ${name} -d
@@ -45,14 +47,15 @@ if [ "${name}" == "${LAST_KNOWN_GOOD_CONTAINER}" -a "${name}" == "${DO_WE_HAVE_T
   #   lxc-attach --name ${name} -- sudo -H -u ${STARPHLEET_APP_USER} bash -c "rsync -rlKt '${ORDER_LOCAL}/' '/home/ubuntu/app/'"
   #   lxc-attach --name ${name} -- sudo -H -u ${STARPHLEET_APP_USER} bash -c "[ -f '${DEVMODE_BUILD_CACHE}' ] && rsync -rav --exclude-from='${DEVMODE_BUILD_CACHE}' --delete '${ORDER_LOCAL}/' '/home/ubuntu/app/'"
   # fi
+  :
 else
-  warn "Creating a New Container"
+  warn "init-serve-order|new_container:${name}"
   # Statuses are used as state in various places
   echo 'building' > "${STATUS_FILE}"
 
   # We should destroy any existing images
-  stardock-docker-image-destroy "${name}"
-  stardock-containerize "${SERVICE_GIT_URL:--}" "${name}" "${HEADQUARTERS_LOCAL}/${order}"
+  "${DIR}/stardock-docker-image-destroy" "${name}"
+  "${DIR}/stardock-containerize" "${SERVICE_GIT_URL:--}" "${name}" "${HEADQUARTERS_LOCAL}/${order}"
 
   # TODO: Figure out container storage in the cloud later
   # CONTAINERIZE_EXIT_CODE=$?
@@ -83,8 +86,6 @@ else
   #   mail_log
   #   exit 1
   # fi
-
-  exit 0
 fi
 
 ##########################################################################
@@ -93,21 +94,20 @@ fi
 info "Starting ${name}"
 
 function docker_run() {
-  docker run -it -d \
-    "${name}" --name "${name}" /bin/bash -c "$@"
+  # We are not destroying the image we just made - only the container
+  # so we can get a clean start with the image
+  "${DIR}/stardock-docker-container-destroy" "${name}"
+  DOCKER_ID=$(eval docker run -d \
+    --network "${STARDOCK_NETWORK_NAME}" \
+    --name "${name}" \
+    "${name}" sudo -E -H -u "${STARDOCK_APP_USER}" "$@")
 }
 
 if [ "${UNPUBLISHED}" == "1" ]; then
-  docker_run "sudo -H -u ${STARDOCK_APP_USER} bash -c '2>&1 sleep 1000000' | logger -t '${order}'" || mail_log &
+  docker_run "sudo -H -u ${STARDOCK_APP_USER} bash -c '2>&1 sleep 100000000' | logger -t '${order}'" || mail_log &
 else
-  if [ "${LOG_TO_STDERR}" == "1" ]; then
-    docker_run "sudo -H -u ${STARDOCK_APP_USER} bash -c '2>&1 setsid ~/start web' | logger -s -t '${order}'" || mail_log &
-  else
-    docker_run "sudo -H -u ${STARDOCK_APP_USER} bash -c '2>&1 setsid ~/start web' | logger -t '${order}'" || mail_log &
-  fi
+  docker_run "/home/ubuntu/start web"
 fi
-
-MY_DOCKER_KID=$!
 
 # echo 'stopped' > "${STATUS_FILE}"
 
@@ -208,11 +208,19 @@ else
   # fi
 
   # Update this containers status with 'online'
-  echo 'online' > "${STATUS_FILE}"
 
   # Announce HUPS in case someone goes crazy
   echo "HUP_REQUESTED: ${order} ${name}" | logger
   # Trigger new publish configs and a hup of nginx
-  stardock-hup-nginx
+  # stardock-hup-nginx
   # For good measure
+
+  echo 'online' > "${STATUS_FILE}"
+  # Don't move on until the container exits
+  while docker container inspect "${DOCKER_ID}" \
+          | jq '.[0].State.Status' \
+          | grep -q running; do
+    sleep "${STARDOCK_PULSE}"
+  done
+  echo 'stopped' > "${STATUS_FILE}"
 fi

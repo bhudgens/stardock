@@ -7,15 +7,18 @@ export COMMAND_PATH="${DIR}/$(basename $0)"
 # we want our 'globals' to get loaded, and all be exported for use
 # in our called script
 set -a
-source ${DIR}/stardock-defaults
 source ${DIR}/stardock-common
 guards
 set +a
 
+trace "${COMMAND_PATH} $@"
+
 # handle our docopt validation
 help="$(grep "^### " "${COMMAND_PATH}" | cut -c 5-)"
 # again, we want whatever comes out of docopt to be exported
-set -a
-eval "$(${DIR}/docopts -h "$help" : "$@")"
-set +a
 
+if [ -n "${help}" ]; then
+  set -a
+  eval "$(${DIR}/docopts -h "$help" : "$@")"
+  set +a
+fi
