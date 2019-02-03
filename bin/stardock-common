@@ -461,22 +461,24 @@ function die_on_error(){
 #   - Then machine specific in /etc/stardock.d
 #   - Support "new" CACHE dir (so we don't need to be installed to machine)
 #   - We slurp in the HQ GitHub location last
+######
+# Yes, we slurp this twice - We want to use it to allow the other envs
+# to pickup on settings from it.  However, we also want the envs in this
+# file to 'win' any naming conflicts
+[ -f "${DIR}/../.config" ] && source "${DIR}/../.config"
+[ -f "${DIR}/stardock-defaults" ] && source "${DIR}/stardock-defaults"
+
 # XXX: Legacy Support for Starphleet
 [ -f "/etc/starphleet" ] && source "/etc/starphleet"
 [ -f "/etc/stardock" ] && source "/etc/stardock"
-[ -f "${HEADQUARTERS_ENV}" ] && source "${HEADQUARTERS_ENV}"
 
 # XXX: Legacy Support for Starphleet
 [ -f "${HEADQUARTERS_LOCAL}/.starphleet" ] && source "${HEADQUARTERS_LOCAL}/.starphleet"
+[ -f "${HEADQUARTERS_ENV}" ] && source "${HEADQUARTERS_ENV}"
+
+# XXX: Legacy Support for Starphleet
 if [ -d /etc/starphleet.d ]; then
   for env_file in /etc/starphleet.d/*
-  do
-    test -f "${env_file}" && source "${env_file}"
-  done
-fi
-
-if [ -d /etc/stardock.d ]; then
-  for env_file in /etc/stardock.d/*
   do
     test -f "${env_file}" && source "${env_file}"
   done
@@ -490,4 +492,10 @@ if [ -d "${STARDOCK_CACHE}/config/stardock.d" ]; then
 fi
 
 [ -f "${HEADQUARTERS_SOURCE}" ] && source "${HEADQUARTERS_SOURCE}"
+
+# Yes, we slurp this twice - We want to use it to allow the other envs
+# to pickup on settings from it.  However, we also want the envs in this
+# file to 'win' any naming conflicts
+[ -f "${DIR}/../.config" ] && source "${DIR}/../.config"
+######
 :
