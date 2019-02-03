@@ -1,4 +1,4 @@
-#!/usr/bin/env stardock-launcher
+#!/usr/bin/env bash
 # vim:syn=sh
 ### Usage:
 ###    stardock-containerize <git_url> <container_name> <orders_dir>
@@ -13,6 +13,8 @@
 ### The container will have a layout with the following special directories:
 ### ${HOME}/app - Your git repository will be here
 ### ${HOME}/start - This is the Heroku style start script
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
 
 #places for things to live
 STARDOCK_BASE="${STARDOCK_BASE:-stardock-base}"
@@ -25,8 +27,18 @@ ORDERS="${orders_dir}/orders"
 CONTAINER_BUILD_SCRIPT=${STARDOCK_TMP}/${container_name}.build
 
 # Load the launcher in the build script
-cat << EOF > ${CONTAINER_BUILD_SCRIPT}
-#!/usr/bin/env ${STARDOCK_ROOT}/bin/stardock-launcher
+cat << 'EOF' > ${CONTAINER_BUILD_SCRIPT}
+#!/usr/bin/env bash
+## Usage:
+##    build_script
+## --help
+##
+## This script helps setup the container and runs a similar
+## setup to heroku, running buildbacks and other various
+## functions.  This scripts is unique per container
+## and dynamically built
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
 EOF
 
 # This is intentionally unescaped using syntax like:
