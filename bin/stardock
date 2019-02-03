@@ -43,11 +43,17 @@ function kill_children() {
       kill "${CHILDREN[$init]}"
       wait "${CHILDREN[$init]}"
     fi
-    echo here
   done
 }
 
 trap "{ kill_children; exit 0; }" SIGTERM EXIT
+
+###################################################################
+## Setup Any Environment Stuffz
+###################################################################
+"${DIR}/stardock-install-default-buildpacks"
+"${DIR}/stardock-install-docker-network"
+"${DIR}/stardock-install-base-container"
 
 ###################################################################
 ## Start Things Off
