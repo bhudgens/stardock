@@ -1,14 +1,17 @@
-#!/usr/bin/env stardock-launcher
+#!/usr/bin/env bash
 # vim:ft=sh
-### Usage:
-###    stardock-git <args>...
-### --help
-###
-### Wrapper script to run git, with identity config files generated
-### from private keys
+## Usage:
+##    stardock-git
+## --help
+##
+## Wrapper script to run git, with identity config files generated
+## from private keys
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
 if [ -z "${GIT_SSH}" ]; then
   export SSH_CONFIG="/tmp/ssh.config.$$"
-  stardock-git-config | tee "${SSH_CONFIG}"
+  "${DIR}/stardock-git-config" | tee "${SSH_CONFIG}"
 
   # script that patches SSH to use our admiral config
   export GIT_SSH="/tmp/.git_ssh.$$"
