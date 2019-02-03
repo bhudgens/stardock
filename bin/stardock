@@ -58,7 +58,9 @@ trap "{ kill_children; exit 0; }" SIGTERM EXIT
 ###################################################################
 ## Start Things Off
 ###################################################################
+IFS=$'\n'
 for init in $INITS; do
+  info "stardock|starting:$1"
   run_daemon "${init}"
 done
 
@@ -68,6 +70,7 @@ done
 while [ 1 ]; do
   for init in "${!CHILDREN[@]}"; do
     if [ ! -e "/proc/${CHILDREN[$init]}" ]; then
+      warn "stardock|restarting:${init}"
       run_daemon "${init}"
     fi
     echo $init:${CHILDREN[$init]}
