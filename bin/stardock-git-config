@@ -21,10 +21,13 @@ if [ -f "${STARDOCK_PRIVATE_KEY}" ]; then
   get_HASH "${STARDOCK_PRIVATE_KEY}${USER}"
   if grep "PRIVATE KEY" "${STARDOCK_PRIVATE_KEY}" > /dev/null; then
     if [ ! -f /var/tmp/${HASH} ]; then
-      cp "${key}" /var/tmp/${HASH}
+      cp "${STARDOCK_PRIVATE_KEY}" /var/tmp/${HASH}
       chown ${USER}:${USER} /var/tmp/${HASH}
       chmod 0400 /var/tmp/${HASH}
     fi
     echo "IdentityFile /var/tmp/${HASH}"
+    exit 0
   fi
 fi
+
+exit 1
