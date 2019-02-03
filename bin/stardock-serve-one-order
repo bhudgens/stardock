@@ -26,6 +26,10 @@ ORDER=$(echo "${order}" | sed -e 's[/orders$[[' | sed -e "s[${HEADQUARTERS_LOCAL
 #make a place for the orders to be managed while running, this is separate
 #from the order files in the headquarters
 CURRENT_ORDER="${CURRENT_ORDERS}/${ORDER}"
+
+# Make sure dirs exist that are required in the pipeline
+# of creating a container.
+mkdir -p "${STARDOCK_TMP}"
 mkdir -p "${CURRENT_ORDER}"
 
 unset ORDERS_DIFF
@@ -81,7 +85,7 @@ fi
 LOCAL="${HEADQUARTERS_LOCAL}/${ORDER}/git"
 
 # Git Repo Change
-[ -n "${SERVICE_GIT_URL}" ] && stardock-git-sync "${SERVICE_GIT_URL}" "${LOCAL}" && DEPLOY_REASON="Git Repo Changed"
+[ -n "${SERVICE_GIT_URL}" ] && "${DIR}/stardock-git-sync" "${SERVICE_GIT_URL}" "${LOCAL}" && DEPLOY_REASON="Git Repo Changed"
 
 # Allow the command to be told to deploy regardless
 DEPLOY_REASON="${FORCE_DEPLOY_REASON:-$DEPLOY_REASON}"
