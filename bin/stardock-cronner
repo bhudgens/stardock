@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
 
-set -e
+die_on_error
+
 orders_dir="${1}"
 orders="${2}"
 app_root="${HOME}/app"
