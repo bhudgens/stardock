@@ -87,6 +87,7 @@ if [ -z "${SERVE_CONTAINERS}" ] \
     docker_exec "mkdir -p /etc/stardock.d"
 
     STARDOCK_FILES_TO_CP="
+      ${STARDOCK_OVERLAYS}
       ${STARDOCK_PRIVATE_KEY}
       ${STARDOCK_ROOT}/.config
       ${STARDOCK_BIN}/stardock-git-config
@@ -261,7 +262,7 @@ docker image tag \
   "${CONTAINER_NAME}:${DATESTAMP}" \
   "${CONTAINER_NAME}:latest"
 
-info made container ${CONTAINER_NAME}
+info "containermake|completed:${CONTAINER_NAME}"
 # Remove lock file to guarantee release
 rm "/var/lock/${LOCK_FILE}"
 ) 200>/var/lock/${LOCK_FILE}

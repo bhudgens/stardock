@@ -7,7 +7,50 @@
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
+function docker_exec() {
+  docker start "${STARDOCK_NGINX_CONTAINER}" > /dev/null \
+  && docker exec \
+    "${STARDOCK_NGINX_CONTAINER}" /bin/bash -c "$@"
+}
+
+function docker_cp() {
+  if [ -d "$1" ] \
+  || [ -f "$1" ]; then
+    docker start "${STARDOCK_NGINX_CONTAINER}" > /dev/null \
+      && docker cp "$1" "${STARDOCK_NGINX_CONTAINER}:$2"
+  fi
+}
+
+function docker_create() {
+  docker create -it \
+   -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
+   --add-host="localship:${BRIDGE_IP}" \
+   --name "${STARDOCK_NGINX_CONTAINER}" ${STARDOCK_BASE}:latest
+}
+
 if ! docker image ls --format '{{.Repository}},{{.Tag}}' | grep "^${STARDOCK_NGINX_CONTAINER},"; then
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
-  "${DIR}/stardock-containermake" "${STARDOCK_NGINX_CONTAINER}" "${STARDOCK_BIN}/stardock-scripts-nginx" "${STARDOCK_BASE}"
+
+  bridge_ip
+  docker_create
+
+  docker_cp "${STARDOCK_ROOT}/nginx" "${STARDOCK_ROOT}/nginx"
+
+  BUILD_SCRIPT_FULL_PATH="${STARDOCK_BIN}/stardock-scripts-nginx"
+  docker_cp "${BUILD_SCRIPT_FULL_PATH}" "${BUILD_SCRIPT_FULL_PATH}"
+  docker_exec "chmod +x '${BUILD_SCRIPT_FULL_PATH}'"
+  docker_exec "${BUILD_SCRIPT_FULL_PATH}"
+
+  exit 0
+  # Make our container image
+  DATESTAMP="$(date +d%y%m%d-d%H%M%S)"
+  docker commit \
+    -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
+    "${CONTAINER_NAME}" "${CONTAINER_NAME}:${DATESTAMP}"
+
+  docker image tag \
+    "${CONTAINER_NAME}:${DATESTAMP}" \
+    "${CONTAINER_NAME}:latest"
+
+  info made container ${CONTAINER_NAME}
 fi
