@@ -48,7 +48,7 @@ EOF
 cat << 'EOF' >> ${CONTAINER_BUILD_SCRIPT}
 set -e
 source ${STARDOCK_ROOT}/bin/stardock-common
-trace app will be in ${HOME}/app
+info "build_script|app_install_dir:${HOME}/app"
 export APP_IN=${HOME}/app
 EOF
 
@@ -57,9 +57,9 @@ EOF
 # Note the single quotes around EOF.  Read more here:
 #  http://glg.link/xZHFBw
 cat << 'EOF' >> ${CONTAINER_BUILD_SCRIPT}
-trace Preparing SSH
-#buildpacks may pull git and need ssh identity
-sudo stardock-git-config ${STARDOCK_APP_USER} > /tmp/gitsshconfig
+info "build_script|prepare_ssh"
+# buildpacks may pull git and need ssh identity
+sudo "${DIR}/stardock-git-config" ${STARDOCK_APP_USER} > /tmp/gitsshconfig
 export GIT_SSH=/tmp/gitssh
 echo "ssh -F /tmp/gitsshconfig \$@" > /tmp/gitssh
 chmod +x /tmp/gitssh
@@ -67,69 +67,44 @@ EOF
 
 #now -- this is escaped, lots of variables included from this script
 cat << EOF >> ${CONTAINER_BUILD_SCRIPT}
-
-trace Fetching service to \${APP_IN}
+info "build_script|installing_service:\${HOME}/app"
 
 if [ "${git_url}" != "-" ]; then
-  if dev_mode; then
-    trace Local Dev mode
-    # Some developers may wish to unbind the GIT directory to the actual app
-    # deployment directory so that packages do not mangle their working git
-    # directory.  Supporting both behaviors.
-    if [ -d "${HEADQUARTERS_LOCAL}/${order}/git" ]; then
-      if [ -n "${DEVMODE_UNBIND_GIT_DIR}" ]; then
-        sudo rsync -rlKt "${HEADQUARTERS_LOCAL}/${order}/git/" \${APP_IN}/ || true
-        sudo chown -R ubuntu:ubuntu \${APP_IN} || true
-      else
-        sudo chown -R ubuntu:ubuntu "${HEADQUARTERS_LOCAL}/${order}/git"
-        ln -s "${HEADQUARTERS_LOCAL}/${order}/git" \${APP_IN} || true
-      fi
-    fi
-  else
-    stardock-git-sync "${git_url}" \${APP_IN}
-  fi
+  info "build_script|downloading_app:\${HOME}/app"
+  sudo -E mkdir -p "\${APP_IN}"
+  sudo -E "\${DIR}/stardock-git-sync" "${git_url}" \${APP_IN}
+  info "build_script|fix_permissions:\${HOME}/app"
+  sudo chown -R ${STARDOCK_APP_USER}:${STARDOCK_APP_USER} "/home/${STARDOCK_APP_USER}"
 fi
 
-trace Running orders
 export ORDERS_NAME="$(basename $(dirname $ORDERS))"
+info "build_script|running_orders:\${ORDERS_NAME}"
 run_orders ${ORDERS}
 
-trace Prepping container
+info "build_script|running_on_containerize:\${ORDERS_NAME}"
 [ -x ${orders_dir}/on_containerize ] && sudo -E ${orders_dir}/on_containerize
 
-
-trace Fetching buildpacks
-#set up a place onboard for possible custom buildpacks
-mkdir -p "\${HOME}/build"
-rsync -az "${BUILDPACKS}/" "\${HOME}/build/buildpacks"
+info "build_script|fetching_buildpack:\${ORDERS_NAME}"
+# Set up a place onboard for possible custom buildpacks
+sudo mkdir -p "\${HOME}/build"
+sudo chown -R "${STARDOCK_APP_USER}:${STARDOCK_APP_USER}" "\${HOME}/build"
 if [ "${git_url}" == "-" ]; then
-  sudo stardock-git-sync "https://github.com/wballard/null-buildpack.git"  "\${HOME}/build/buildpacks/ZZZ-NULL"
+  sudo -E "${DIR}/stardock-git-sync" "https://github.com/wballard/null-buildpack.git"  "\${HOME}/build/buildpacks/ZZZ-NULL"
 fi
 
-EOF
+info "build_script|builder:${ORDERS}"
+"${DIR}/stardock-builder" ${ORDERS}
 
-#now hand off to buildstep builder
-cat << EOF >> ${CONTAINER_BUILD_SCRIPT}
-trace Running buildpack
-if [ -n "\${BUILDPACK_CACHE_DIR}" ]; then
-  trace Buildpack caching is enabled
-  sudo mkdir -p "\${BUILDPACK_CACHE_DIR}"
-  sudo chown -R ${STARDOCK_APP_USER}:${STARDOCK_APP_USER} "\${BUILDPACK_CACHE_DIR}"
-fi
+info "build_script|cronner:${ORDERS}"
+"${DIR}/stardock-cronner" ${orders_dir} ${ORDERS}
 
-trace Calling Builder
-builder ${ORDERS}
-
-trace Calling Cronner
-cronner ${orders_dir} ${ORDERS}
-
-trace Post-prepping container
+info "build_script|after_containerize:${orders_dir}/after_containerize"
 [ -x ${orders_dir}/after_containerize ] && sudo -E ${orders_dir}/after_containerize
 
-trace Container ready
+info "build_script|done:container ready"
 
 EOF
 
-info building ${container_name}
+info "containerize|building:${container_name}"
 #and now, actually make the container for your application
 "${STARDOCK_BIN}/stardock-containermake" --run "${container_name}" "${CONTAINER_BUILD_SCRIPT}" "${STARDOCK_BASE}"
