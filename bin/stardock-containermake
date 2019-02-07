@@ -100,7 +100,7 @@ if [ -z "${SERVE_CONTAINERS}" ] \
       ${STARDOCK_BIN}/stardock-runner
       ${STARDOCK_BIN}/stardock-builder
       ${STARDOCK_BIN}/stardock-git
-      ${STARDOCK_BIN}/packages
+      ${STARDOCK_BIN}/stardock-packages-list
       ${STARDOCK_BIN}/docopts
       ${STARDOCK_BIN}/docopt.py
     "
