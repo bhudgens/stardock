@@ -8,17 +8,20 @@ export STARDOCK_PULSE="10"
 export STARDOCK_DRAINSTOP_WAIT="30"
 export STARDOCK_BASE="stardock-base"
 
-export STARDOCK_ROOT="${STARDOCK_ROOT:-/tmp/stardock}"
+if [ -z "${STARDOCK_ROOT}" ]; then
+  export STARDOCK_ROOT=$(dirname $(cd $(dirname ${BASH_SOURCE[0]}) && pwd))
+fi
 export STARDOCK_RUN="${STARDOCK_ROOT}/run"
 export STARDOCK_BIN="${STARDOCK_ROOT}/bin"
 export STARDOCK_TMP="${STARDOCK_ROOT}/tmp"
 export STARDOCK_CACHE="${STARDOCK_ROOT}/cache"
-
 export STARDOCK_OVERLAYS="${STARDOCK_ROOT}/overlays"
-export STARDOCK_OVERLAY_NGINX="${STARDOCK_OVERLAYS}/nginx"
+
+# An overlay intended to be installed in all containers
 export STARDOCK_OVERLAY_CONTAINER="${STARDOCK_OVERLAYS}/containers"
 
 # Things that are runtime files
+export STARDOCK_LOGS="${STARDOCK_RUN}/logs"
 export HEADQUARTERS_SOURCE="${STARDOCK_RUN}/.headquarters"
 export HEADQUARTERS_LOCAL="${HEADQUARTERS_LOCAL:-${STARDOCK_RUN}/headquarters}"
 export CURRENT_ORDERS="${STARDOCK_RUN}/current_orders"
