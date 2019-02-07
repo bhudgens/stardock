@@ -25,7 +25,7 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
 apt update -y
-apt install -y docker-ce jq
+apt install -y docker-ce jq python
 
 STARDOCK_INSTALL_DIR="/var/stardock"
 
@@ -33,3 +33,5 @@ mkdir -p "${STARDOCK_INSTALL_DIR}"
 git clone 'https://github.com/bhudgens/stardock.git' "${STARDOCK_INSTALL_DIR}"
 
 pushd "${STARDOCK_INSTALL_DIR}" > /dev/null
+
+cp -R "${STARDOCK_INSTALL_DIR}/overlays/host"/* /

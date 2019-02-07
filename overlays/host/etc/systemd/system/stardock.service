@@ -1,0 +1,10 @@
+[Unit]
+Description=Stardock
+
+[Service]
+WorkingDirectory=/var/stardock
+ExecStart=/var/stardock/bin/stardock
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
