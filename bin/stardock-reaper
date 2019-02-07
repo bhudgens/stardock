@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# vim:syn=sh
+### Usage:
+###    starphleet-reaper <current_service_name> <order> [--force]
+### --help
+###
+### Kill off every running service for an order except the current service
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+# Reap any containers
+for repository_and_tag in $(docker image ls --format '{{.Repository}},{{.Tag}}' \
+            | grep --extended-regexp -e ",${order}-[a-f0-9]+-[a-f0-9]+" \
+            | grep --invert-match "${current_service_name}"); do
+
+
+  repository="$(echo $repository_and_tag | cut -f1 -d',')"
+  name="$(echo $repository_and_tag | cut -f2 -d',')"
+  
+  STATUS_FILE="${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"
+
+  # If the status file exists get the status
+  [ -f "${STATUS_FILE}" ] && CURRENT_STATUS=$(cat "${STATUS_FILE}")
+  # Get the latest successful container deployment
+  CURRENT_CONTAINER=$(cat ${CURRENT_ORDERS}/${order}/.container)
+  # Determine where nginx is pointing
+  NGINX_CONTAINER=$(curl --connect-timeout 1 -s -XHEAD -i "http://localhost/${order}/" | grep -i "X-Stardock-Container" | cut -f 2 -d " " | tr -dc '[[:print:]]')
+
+  # *****************************
+  # Guards
+  # *****************************
+  # The following are a set of guards to prevent reaps from happening when we
+  # don't want them to happen
+
+  # Starphleet intentionally won't reap images that fail to build
+  # until a container for the same service successfully builds.  This mechanism
+  # intentionally leaves around failed images for debug purposes.  To facilitate
+  # this we check if the .container file (updates on success) is 'newer' than
+  # the status file of the container we are attempting to reap
+  if [ "${CURRENT_ORDERS}/${order}/.container" -ot "${STATUS_FILE}" ] &&
+     [ "${force}" != "true" ]; then
+     info "Unable to reap ${name} - Latest container ${CURRENT_CONTAINER} is not newer"
+    continue;
+  fi
+
+  # Only reap non-building images.  Being explicit about reap conditions
+  # so future statuses don't trigger accidental reapz
+  # We won't reap if all are true:
+  #   - The image is not online
+  #   - The image is not failed
+  #   - The image is not stopped
+  #   - The image is not failed to publish
+  #   - This server is a build only server ("build server" status)
+  if [ "${CURRENT_STATUS}" != "" ] &&
+     [ "${CURRENT_STATUS}" != "online" ] &&
+     [ "${CURRENT_STATUS}" != "stopped" ] &&
+     [ "${CURRENT_STATUS}" != "failed" ] &&
+     [ "${CURRENT_STATUS}" != "build server" ] &&
+     [ "${CURRENT_STATUS}" != "building failed" ] &&
+     [ "${CURRENT_STATUS}" != "publish failed" ] &&
+     [ "${force}" != "true" ]; then
+     info "Reaper: Unable to reap ${name} due to status: ${CURRENT_STATUS}"
+    continue;
+  fi
+
+  # We won't reap if any are true:
+  #   - The current active container is being attempted
+  #   - NGINX is pointing at this container
+  #   - Force is not enabled
+  if ([ "${CURRENT_CONTAINER}" == "${name}" ] ||
+     [ "${NGINX_CONTAINER}" == "${name}" ]) &&
+     [ "${CURRENT_STATUS}" != "build server" ] &&
+     [ "${force}" != "true" ]; then
+     info "Unable to reap ${name} - Active Container ${CURRENT_CONTAINER} - NGINX Pointing at ${NGINX_CONTAINER}"
+    continue;
+  fi
+
+  info "reaper|image:${name}"
+
+  info "reaper|kill_init:${name}"
+  # TODO: Need to change how we kill an init job
+  # stop starphleet_orders_healthcheck name="${name}" || true
+  # stop starphleet_serve_order name="${name}" || true
+
+  info "reaper|destroy_image:${name}"
+  "${STARDOCK_BIN}/stardock-docker-image-destroy" "${name}"
+
+  info "reaper|purge_status:${name}"
+  rm ${CURRENT_ORDERS}/${order}/.stardockstatus.${name}* || true
+
+  info "reaper|purge_logs:${name}"
+  rm /var/log/upstart/starphleet_serve_order-${name}* || true
+  rm /var/log/upstart/starphleet_orders_healthcheck-${name}* || true
+
+  info "reaper|complete:${name}"
+done
+
+# After we destroy all containers above, technically, all status files would
+# be purged.  However, if a user manually destroys a container and it doesn't
+# run through the proper reaper process it would leave around stale status
+# files which would trigger the reaper over-and-over.
+#
+# So, check if any status files are left over and if there isn't a container
+# running for them we clean them up
+# Clean up any stale status files
+for CONTAINER_STATUS_FILE in $(find "${CURRENT_ORDERS}/${order}/" -type f -name ".stardockstatus*" | grep --extended-regexp -e ".*-[a-f0-9]+$" | grep -v "${current_service_name}")
+do
+    # Yoink just the container name off the status file
+    container_name=$(basename "${CONTAINER_STATUS_FILE}" | sed -e 's/.stardockstatus.//')
+
+    # Check if there's a container associated with this status file
+    check=$(docker container ls --format '{{.Image}}' | egrep ":${container_name}$")
+
+    info "reaper|stale_check:${CONTAINER_STATUS_FILE}"
+
+    if [ -z "${check}" ]; then
+      warn "reaper|stale_purge:${CONTAINER_STATUS_FILE}"
+      rm ${CONTAINER_STATUS_FILE}
+    fi
+done
