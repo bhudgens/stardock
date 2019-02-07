@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# vim:syn=sh
+### Usage:
+###    stardock-dev-refresh-base-container <container_name> <build_script>
+### --help
+###
+### This script is a helper for the dev process to help
+### refresh the base container without needing to rebuild
+### the entire thing
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+run_as_root_or_die
+die_on_error
+
+test -f "${build_script}"
+
+CONTAINER_NAME="${container_name}"
+LOCK_FILE=${CONTAINER_NAME}
+#CONTAINER_ROOT=/var/lib/lxc/${CONTAINER_NAME}
+# A race condition occurs when locking based on containername
+# where multiple containers for the same order will trample
+# on each other continuiously.  We are using the 'order' to
+# lock so we only build once per order
+#if dev_mode ;then
+  #[ -z ${order} ] && LOCK_FILE=${CONTAINER_NAME} || LOCK_FILE=${order}
+#fi
+
+# Here we start a subshell so we can flock all the
+# things.  Basically, we only want to be building
+# against a container one-at-a-time
+(
+flock 200
+
+function docker_exec() {
+  docker start "${container_name}" > /dev/null \
+  && docker exec \
+    "${container_name}" /bin/bash -c "$@"
+}
+
+function docker_cp() {
+  if [ -d "$1" ] \
+  || [ -f "$1" ]; then
+    docker start "${container_name}" > /dev/null \
+      && docker cp "$1" "${container_name}:$2"
+  fi
+}
+
+# We DO want to update the image if it exists
+# if docker images -a | egrep "^${container_name}$" > /dev/null; then
+#   warn "containermake|exists:${CONTAINER_NAME}"
+#   exit 0
+# fi
+
+info "containermake|creating:${CONTAINER_NAME}"
+
+# No matter what, we will need the bridge ip
+# of the docker install of this machine
+bridge_ip
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Things we do for building a base container.  This is basically
+# a container all other containers are based on
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+info "containermake|building:${CONTAINER_NAME}"
+info "containermake|base_container:${CONTAINER_NAME}"
+"${DIR}/stardock-docker-container-destroy" "${CONTAINER_NAME}"
+# Get the IP to the Docker Bridge
+docker create -it \
+ -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
+ --add-host="localship:${BRIDGE_IP}" \
+ --name "${CONTAINER_NAME}" ${CONTAINER_NAME}:latest
+
+docker_exec "mkdir -p ${STARDOCK_ROOT}"
+docker_exec "mkdir -p ${STARDOCK_BIN}"
+docker_exec 'mkdir -p $(dirname '"${STARDOCK_PRIVATE_KEY}"')'
+docker_exec "mkdir -p /etc/stardock.d"
+
+STARDOCK_FILES_TO_CP="
+  ${STARDOCK_OVERLAYS}
+  ${STARDOCK_PRIVATE_KEY}
+  ${STARDOCK_ROOT}/.config
+  ${STARDOCK_BIN}/stardock-git-config
+  ${STARDOCK_BIN}/stardock-git-sync
+  ${STARDOCK_BIN}/stardock-common
+  ${STARDOCK_BIN}/stardock-defaults
+  ${STARDOCK_BIN}/stardock-launcher
+  ${STARDOCK_BIN}/stardock-cronner
+  ${STARDOCK_BIN}/stardock-runner
+  ${STARDOCK_BIN}/stardock-builder
+  ${STARDOCK_BIN}/stardock-git
+  ${STARDOCK_BIN}/stardock-packages-list
+  ${STARDOCK_BIN}/docopts
+  ${STARDOCK_BIN}/docopt.py
+"
+for file in $STARDOCK_FILES_TO_CP; do
+  docker_cp "$file" "$file"
+done
+
+info "containermake|usercreation:${CONTAINER_NAME}"
+docker_exec "chmod 777 /var/log/"
+docker_exec "useradd -s /bin/bash ${STARDOCK_APP_USER} || true"
+docker_exec "adduser ${STARDOCK_APP_USER} sudo"
+docker_exec "mkdir -p /home/${STARDOCK_APP_USER}/.ssh"
+docker_exec "echo -e '${STARDOCK_APP_USER} ALL=NOPASSWD:ALL' >> /etc/sudoers"
+
+#this is the build script for the container itself
+info "containermake|build_script_setup:${CONTAINER_NAME}"
+#start up the container, waiting for the network, and then run the container build script
+
+#host file updates
+docker_exec "mkdir -p /home/${STARDOCK_APP_USER}/build"
+docker_cp "${BUILDPACKS}" "/home/${STARDOCK_APP_USER}/build"
+docker_exec "chown -R ${STARDOCK_APP_USER}:${STARDOCK_APP_USER} /home/${STARDOCK_APP_USER}"
+
+BUILD_SCRIPT_FULL_PATH="${STARDOCK_BIN}/build_script"
+docker_cp "${build_script}" "${BUILD_SCRIPT_FULL_PATH}"
+docker_exec "chmod +x '${BUILD_SCRIPT_FULL_PATH}'"
+docker_exec "sudo -H -u ${STARDOCK_APP_USER} bash -c '${BUILD_SCRIPT_FULL_PATH}'"
+
+# Make our container image
+DATESTAMP="$(date +d%y%m%d-d%H%M%S)"
+docker commit \
+  -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
+  "${CONTAINER_NAME}" "${CONTAINER_NAME}:${DATESTAMP}"
+
+docker image tag \
+  "${CONTAINER_NAME}:${DATESTAMP}" \
+  "${CONTAINER_NAME}:latest"
+
+info "containermake|completed:${CONTAINER_NAME}"
+# Remove lock file to guarantee release
+rm "/var/lock/${LOCK_FILE}"
+) 200>/var/lock/${LOCK_FILE}
