@@ -1,0 +1,341 @@
+#! /usr/bin/env bash
+### Usage:
+###    stardock-publish <container_name> <order> <orders_file> [<publish_path>]
+### --help
+###
+### Publish HTTP traffic from the container out to the ship
+### nginx at a designated url mount point. This lets you aggregate multiple
+### web services under one host and avoid CORS and cross domain muck.
+###
+### Optionally, you can 'deep publish' or alias further into the container.
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+run_as_root_or_die
+
+# Even though we won't use this variable here we still
+# want to declare it in case the orders don't
+declare -A BETAS
+
+# declare for redirects
+declare -A REDIRECT_TO
+run_orders "${orders_file}"
+
+if ! validate_security; then
+  error "Not Publishing ${order} - Security Not Setup Correctly"
+  exit 1
+fi
+
+if [ -n "${UNPUBLISHED}" ]; then
+  exit 0
+fi
+
+# if is_container_storage_on_s3 \
+#    && [ -z "${SERVE_CONTAINERS}" ]; then
+#   # If we aren't serving we shouldn't publish
+#   exit 0
+# fi
+
+ORIGINAL_ORDER_NAME="${order}"
+
+if [ -n "${publish_path}" ]; then
+  order="${publish_path}"
+fi
+
+public_url="/${order}"
+if [ "${public_url}" == "/" ]; then
+  public_url=""
+fi
+
+#mount this service over a path
+MOUNT_CONF="${STARDOCK_NGINX_RUNTIME}/published/${order}.conf"
+# this is where the confs for all the services WITHOUT the
+# access exclusions will be put
+SECURE_CONF="${STARDOCK_NGINX_RUNTIME}/published_secure/${order}.conf"
+MOUNT_CACHED_CONF="${STARDOCK_NGINX_RUNTIME}/published/${order}_cached.conf"
+#mount this service over a port
+BARE_CONF="${STARDOCK_NGINX_RUNTIME}/published_bare/${order}.conf"
+#redirect your urls to lxc
+REDIRECT_CONF="${STARDOCK_NGINX_RUNTIME}/published/${order}.redirect"
+#mount this service over a path
+PROXY_FOR_CONF="${STARDOCK_NGINX_RUNTIME}/proxy_for/${order}.conf"
+SERVER_NAMES_CONF="${STARDOCK_NGINX_RUNTIME}/named_servers/${order}.conf"
+
+IP_ADDRESS="$(get_container_ip ${container_name})"
+
+if [ -r "${CURRENT_ORDERS}/${ORIGINAL_ORDER_NAME}/.stardockstatus.${container_name}.port" ]; then
+  PORT=$(cat "${CURRENT_ORDERS}/${ORIGINAL_ORDER_NAME}/.stardockstatus.${container_name}.port")
+fi
+
+mkdir -p "${STARDOCK_NGINX_RUNTIME}/published"
+mkdir -p "${STARDOCK_NGINX_RUNTIME}/published_bare"
+mkdir -p "${STARDOCK_NGINX_RUNTIME}/proxy_for"
+mkdir -p "${STARDOCK_NGINX_RUNTIME}/named_servers"
+mkdir -p "${STARDOCK_NGINX_RUNTIME}/htpasswd"
+mkdir -p "${STARDOCK_NGINX_RUNTIME}/published_secure"
+
+# [ -f "${STARDOCK_NGINX_RUNTIME}/published/crt" ] || cp "${STARDOCK_NGINX_RUNTIME}/crt" "${STARDOCK_NGINX_RUNTIME}/published/crt"
+# [ -f "${STARDOCK_NGINX_RUNTIME}/published/key" ] || cp "${STARDOCK_NGINX_RUNTIME}/key" "${STARDOCK_NGINX_RUNTIME}/published/key"
+
+if [ -n "${REDIRECT_TO_SERVICE}" ]; then
+  trace "setting service redirect for order ${order} to ${REDIRECT_TO_SERVICE}"
+  # redirect service is exlusive of all other settings
+  cat << EOF > "${MOUNT_CONF}"
+location ${public_url}/ {
+  rewrite ^${public_url}/(.*)$ ${REDIRECT_TO_SERVICE}/\$1 permanent;
+}
+EOF
+  # that's all it does
+  exit
+fi
+
+info publishing to ${IP_ADDRESS}
+
+# If we can't get an IP, punt.  THis can happen if a person manually deletes things
+# in CURRENT_ORDERS or tries a stardock-redeploy which indentionally wipes the world
+if [ -z "${IP_ADDRESS}" ]; then
+  error "Could not find ip address for container ${container_name} cannot publish"
+  exit 1
+fi
+
+#basic publication at an url mount point
+cat << EOF > "${MOUNT_CONF}"
+location ${public_url} { return 301 \$request_protocol://\$host${public_url}/\$is_args\$args; }
+location ${public_url}/ {
+  gzip on;
+  gzip_types *;
+  gzip_proxied any;
+  gzip_comp_level 6;
+  include ${STARDOCK_NGINX_RUNTIME}/cors.conf;
+EOF
+
+# This section handles jwt authentication.  It has to be here (before proxy_pass directive)
+# because nxinx set var can't occur after proxy_pass directive
+if [ "${SECURITY_MODE}" = 'jwt' ]; then
+info jwt enabled
+cat << EOF >> "${MOUNT_CONF}"
+  set \$jwt_secret ${JWT_SECRET};
+  set \$jwt_auth_site ${JWT_AUTH_SITE};
+  set \$jwt_auth_header ${USER_IDENTITY_HEADER};
+  set \$jwt_cookie_domain ${JWT_COOKIE_DOMAIN};
+  set \$jwt_cookie_name ${JWT_COOKIE_NAME};
+  set \$jwt_access_flags ${JWT_ACCESS_FLAGS};
+  set \$jwt_revocation_dir ${JWT_REVOCATION_DIR};
+  set \$user_identity_cookie ${USER_IDENTITY_COOKIE};
+  set \$public_url ${public_url};
+  set \$jwt_max_token_age_in_seconds ${JWT_MAX_TOKEN_AGE_IN_SECONDS};
+  set \$jwt_expiration_in_seconds ${JWT_EXPIRATION_IN_SECONDS};
+  set \$authentic_token "${STARDOCK_AUTHENTIC_TOKEN}";
+  access_by_lua_file ${STARDOCK_NGINX_RUNTIME}/lua/jwt.lua;
+EOF
+fi
+
+cat << EOF >> "${MOUNT_CONF}"
+  resolver 127.0.0.11 valid=${STARDOCK_NGINX_DNS_CACHE_TIMEOUT}s;
+  if (\$http_cookie ~ "beta_${order}=(.*?)(;|$)") {
+    set \$sendto \$1;
+    rewrite ${public_url}/(.*) /\$sendto/\$1 last;
+  }
+  set \$upstream http://${order}:${PORT};
+  rewrite ${public_url}/(.*) /\$1 break;
+  proxy_pass \$upstream;
+  # cache goes here
+  proxy_set_header X-Forwarded-Host \$host;
+  proxy_set_header X-Forwarded-Server \$host;
+  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  proxy_set_header X-StarDock-Service-Name: ${order};
+  # XXX: Backwards Compatible
+  proxy_set_header X-Starphleet-Service-Name: ${order};
+  proxy_set_header Host \$http_host;
+  # headers go here
+  # headers for the response go here
+  # WebSocket support (nginx 1.4)
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade \$http_upgrade;
+  proxy_set_header X-Http \$https;
+  proxy_set_header Connection "upgrade";
+  more_set_headers 'X-Stardock-Service: ${public_url}';
+  more_set_headers 'X-Stardock-Container: ${container_name}';
+  # Backwards compatible
+  more_set_headers 'X-Starphleet-Service: ${public_url}';
+  more_set_headers 'X-Starphleet-Container: ${container_name}';
+EOF
+if [ -n "${NGINX_LOCATION_CONFIGS}" ]; then
+  echo "${NGINX_LOCATION_CONFIGS}" >> "${MOUNT_CONF}"
+fi
+
+if [ -n "${STARDOCK_EC2_REGION}" ]; then
+  echo "  more_set_headers 'X-Stardock-Ship: ${STARDOCK_EC2_REGION}';" >> "${MOUNT_CONF}"
+fi
+
+# XXX: Backwards compatible
+if [ -n "${STARDOCK_EC2_REGION}" ]; then
+  echo "  more_set_headers 'X-Starphleet-Ship: ${STARDOCK_EC2_REGION}';" >> "${MOUNT_CONF}"
+fi
+
+if [ "${SECURITY_MODE}" = 'htpasswd' ]; then
+  info password file enabled
+  HTPASSWD_FILE="${STARDOCK_NGINX_RUNTIME}/htpasswd/${order}.htpasswd"
+  echo "${HTPASSWD}" > "${HTPASSWD_FILE}"
+  echo "  auth_basic \"Forbidden!\";" >> "${MOUNT_CONF}"
+  echo "  auth_basic_user_file ${HTPASSWD_FILE};" >> "${MOUNT_CONF}"
+  echo "  proxy_set_header ${USER_IDENTITY_HEADER} \$remote_user;" >> "${MOUNT_CONF}"
+  echo "  add_header Set-Cookie ${USER_IDENTITY_COOKIE}=\$remote_user;" >> "${MOUNT_CONF}"
+fi
+if [ -n "${DEVMODE_FORCE_AUTH}" ]; then
+  echo "  proxy_set_header ${USER_IDENTITY_HEADER} ${DEVMODE_FORCE_AUTH};" >> "${MOUNT_CONF}"
+  echo "  add_header Set-Cookie ${USER_IDENTITY_COOKIE}=${DEVMODE_FORCE_AUTH};" >> "${MOUNT_CONF}"
+fi
+if [ "${SECURITY_MODE}" = 'ldap' ]; then
+  info LDAP enabled
+  echo "  auth_ldap \"Forbidden!\";" >> "${MOUNT_CONF}"
+  echo "  auth_ldap_servers $LDAP_SERVER;" >> "${MOUNT_CONF}"
+  echo "  proxy_set_header ${USER_IDENTITY_HEADER} \$remote_user;" >> "${MOUNT_CONF}"
+  echo "  add_header Set-Cookie ${USER_IDENTITY_COOKIE}=\$remote_user;" >> "${MOUNT_CONF}"
+fi
+if [ -z "${DISABLE_AUTO_AUTH}" ]; then
+  if [ "${SECURITY_MODE}" != 'public' ] && ! dev_mode ; then
+    # don't want to ldap authenticate from other containers on the ship
+    # see http://forum.nginx.org/read.php?2,242713,242742#msg-242742
+    # note: this needs an auth_basic that always fails and has the same name as auth_ldap
+    echo "  satisfy any;" >> "${MOUNT_CONF}"
+    echo "  allow 192.168.0.0/16;" >> "${MOUNT_CONF}"
+    echo "  allow 172.16.0.0/12;" >> "${MOUNT_CONF}"
+    echo "  allow 10.0.0.0/8;" >> "${MOUNT_CONF}"
+    # this is required to allow the reaper and the HCs to get to containers that might otherwise
+    # have authentication requirements
+    echo "  allow 127.0.0.0/8;" >> "${MOUNT_CONF}"
+  fi
+fi
+
+#closing off the location
+echo '}' >> "${MOUNT_CONF}"
+
+info "published ${container_name}:${PORT} to ${public_url}"
+
+
+#port publication, this is optional if a port is set - this code gets removed once everything is redirected
+if [ "${PUBLISH_PORT}" != "0" ]
+then
+cat << EOF > "${BARE_CONF}"
+server {
+  listen ${PUBLISH_PORT};
+
+  location / {
+    gzip on;
+    gzip_types *;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    include ${STARDOCK_NGINX_RUNTIME}/cors.conf;
+    proxy_set_header X-Forwarded-Host \$host;
+    proxy_set_header X-Forwarded-Server \$host;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header Host \$http_host;
+    resolver 127.0.0.11 valid=${STARDOCK_NGINX_DNS_CACHE_TIMEOUT}s;
+    set \$upstream http://${order}:${PORT};
+    proxy_pass \$upstream;
+    proxy_redirect \$scheme://\$host:\$server_port/ \$scheme://\$host/;
+    # WebSocket support (nginx 1.4)
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection "upgrade";
+EOF
+  if [ "${SECURITY_MODE}" = 'htpasswd' ]; then
+    info password file enabled
+    HTPASSWD_FILE="${STARDOCK_NGINX_RUNTIME}/htpasswd/${order}.htpasswd"
+    echo "${HTPASSWD}" > "${HTPASSWD_FILE}"
+    echo "  auth_basic \"\";" >> "${BARE_CONF}"
+    echo "  auth_basic_user_file ${HTPASSWD_FILE};" >> "${BARE_CONF}"
+    echo "  proxy_set_header ${USER_IDENTITY_HEADER} \$remote_user;" >> "${BARE_CONF}"
+    echo "  add_header Set-Cookie ${USER_IDENTITY_COOKIE}=\$remote_user;" >> "${BARE_CONF}"
+  fi
+  if [ "${SECURITY_MODE}" = 'ldap' ]; then
+    info LDAP enabled
+    echo "  auth_ldap \"Forbidden!\";" >> "${BARE_CONF}"
+    echo "  auth_ldap_servers $LDAP_SERVER;" >> "${BARE_CONF}"
+    echo "  proxy_set_header ${USER_IDENTITY_HEADER} \$remote_user;" >> "${BARE_CONF}"
+    echo "  add_header Set-Cookie ${USER_IDENTITY_COOKIE}=\$remote_user;" >> "${MOUNT_CONF}"
+  fi
+
+  echo -e "  }\n}" >> "${BARE_CONF}"
+  info "published ${container_name}:${PORT} :${PUBLISH_PORT}"
+else
+  rm -f "${BARE_CONF}"
+fi
+
+#redirect a DNS entry to the lxc url
+if [[ "${REDIRECT}" != '' && "${REDIRECT}" != '-' && "${REDIRECTTO}" != '' ]]; then
+  info "redirect set for ${REDIRECT}"
+  echo "if (\$http_host = ${REDIRECT}) {" > "${REDIRECT_CONF}"
+  echo " rewrite ^ ${REDIRECTTO}\$uri permanent;" >> "${REDIRECT_CONF}"
+  echo " break;" >> "${REDIRECT_CONF}"
+  echo "}" >> "${REDIRECT_CONF}"
+fi
+
+#handle the list of redirections by appending to the redirect conf variable
+for redirected in "${!REDIRECT_TO[@]}"
+do
+  info "redirect_to set for ${redirected}"
+  echo "if (\$http_host = ${redirected}) {" >> "${REDIRECT_CONF}"
+  echo " rewrite ^ ${REDIRECT_TO[$redirected]}\$uri permanent;" >> "${REDIRECT_CONF}"
+  echo " break;" >> "${REDIRECT_CONF}"
+  echo "}" >> "${REDIRECT_CONF}"
+done
+
+# allowing for the addition of headers within the context of orders files, this
+# will get the specified headers into our nginx conf for the service
+for header in "${!SERVICE_HEADERS[@]}"
+do
+  info "adding service specific headers $header: ${SERVICE_HEADERS[$header]}"
+  sed --regexp-extended -i '' -e "s[# headers go here[# headers go here\n  proxy_set_header ${header} \"${SERVICE_HEADERS[$header]}\";[" ${MOUNT_CONF}
+done
+
+# allowing for the addition of headers within the context of orders files, this
+# will get the specified headers into nginx for transmission to the client in
+# the response
+for header in "${!RESPONSE_HEADERS[@]}"
+do
+  info "adding response headers $header: ${RESPONSE_HEADERS[$header]}"
+  sed --regexp-extended -i '' -e "s[# headers for the response go here[# headers for the response go here\n  more_set_headers \"${header}: ${RESPONSE_HEADERS[$header]}\";[" ${MOUNT_CONF}
+done
+
+if [ -n "${PROXY_FOR_NAMES}" ]; then
+  info "publishing container ${container_name} using proxy_for: ${PROXY_FOR_NAMES}"
+  #so, what we do here is wrap our newly created MOUNT_CONF with a server block and save it into PROXY_FOR_CONF
+  #on the way we change the location block to be '/' which is match all so our new server block proxies all traffic
+  #the newly created server block maps our PROXY_FOR_NAMES into the server_name for the block this all ends us with
+  #host header mapped server for these orders to the given hostnames given via 'proxy_for' in the orders
+  #(e.g. in the orders find 'proxy_for some.dns.name.com')
+  if [  -r "${STARDOCK_NGINX_RUNTIME}/proxy_for_template.conf.head" -a -r "${STARDOCK_NGINX_RUNTIME}/proxy_for_template.conf.tail" -a -r "${MOUNT_CONF}" ]
+  then
+    cat "${MOUNT_CONF}" | grep -v "location ${public_url} { return 301 \$request_protocol://\$host${public_url}/\$is_args\$args; }" | sed -r -e 's[rewrite .*$[[' -e "s[location ${public_url}[location [" | cat "${STARDOCK_NGINX_RUNTIME}/proxy_for_template.conf.head" - "${STARDOCK_NGINX_RUNTIME}/proxy_for_template.conf.tail" | sed --regexp-extended -e "s[\{\{\{proxy_for_names\}\}\}[${PROXY_FOR_NAMES//./\.}[" > "${PROXY_FOR_CONF}"
+  else
+    error 'unable to find proxy_for_template.conf.* files. cannot set up proxying for provided names'
+  fi
+fi
+
+if [ -n "${SERVER_NAMES}" ]; then
+  info "publishing container ${container_name} using server_names: ${SERVER_NAMES} using conf templates named ${SERVER_NAMES_CONF_NAME}"
+  [ "${SERVER_NAMES_CONF_NAME}" = "default" ] && SERVER_NAMES_CONF_NAME=named_server_template
+  #so, what we do here is wrap our newly created MOUNT_CONF with a server block and save it into PROXY_FOR_CONF
+  #on the way we change the location block to be '/' which is match all so our new server block proxies all traffic
+  #the newly created server block maps our SERVER_NAMES into the server_name for the block this all ends us with
+  #host header mapped server for these orders to the given hostnames given via 'proxy_for' in the orders
+  #(e.g. in the orders find 'server_names some.dns.name.com')
+  SERVER_NAMES_CONF_HEAD="${STARDOCK_NGINX_RUNTIME}/${SERVER_NAMES_CONF_NAME}.conf.head"
+  SERVER_NAMES_CONF_TAIL="${STARDOCK_NGINX_RUNTIME}/${SERVER_NAMES_CONF_NAME}.conf.tail"
+  if [  -r "${SERVER_NAMES_CONF_HEAD}" -a -r "${SERVER_NAMES_CONF_TAIL}" -a -r "${MOUNT_CONF}" ]
+  then
+    cat "${MOUNT_CONF}" | grep -v "location ${public_url} { return 301 \$request_protocol://\$host${public_url}/\$is_args\$args; }" | sed -r -e 's[rewrite .*$[[' -e "s[location ${public_url}[location [" | cat "${SERVER_NAMES_CONF_HEAD}" - "${SERVER_NAMES_CONF_TAIL}" | sed --regexp-extended -e "s[\{\{\{server_names\}\}\}[${SERVER_NAMES//./\.}[" > "${SERVER_NAMES_CONF}"
+  else
+    error 'unable to find named_server.conf.* files. cannot set up named server for provided names'
+  fi
+fi
+
+# generate a cached configuration
+if [ -n "${ADD_CACHED_LOCATION}" ]; then
+	cat "${MOUNT_CONF}" | grep -v "location ${public_url} { return 301 \$request_protocol://\$host${public_url}/\$is_args\$args; }" | sed -r -e "s[rewrite .*\$[rewrite ${public_url}_cached/(.*) /\$1 break;[" -e "s[location ${public_url}/[location ${public_url}_cached/ [" | sed -e "s[# cache goes here[add_header X-Cache-Status \$upstream_cache_status;\n  proxy_cache aggressive_zone;\n  proxy_cache_lock on;\n  proxy_cache_methods GET HEAD POST;\n  proxy_ignore_headers Expires Cache-Control;\n  proxy_cache_lock_timeout 1d;\n  proxy_cache_use_stale updating error timeout;\n  proxy_cache_valid 200 2h;\n  proxy_buffering on;\n  proxy_cache_key \$scheme\$proxy_host\$uri\$is_args\$args\$http_method;[" > "${MOUNT_CACHED_CONF}"
+fi
+
+# create a secure conf which doesn't allow anyone to skip auth
+grep -v allow "${MOUNT_CONF}" | grep -v "satisfy any" > "${SECURE_CONF}"
