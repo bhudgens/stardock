@@ -7,7 +7,9 @@
 ### of the service containers will descend
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
-if ! docker image ls --format '{{.Repository}},{{.Tag}}' | grep "^${STARDOCK_BASE},"; then
+
+if ! docker image ls --format '{{.Repository}},{{.Tag}}' | grep -q "^${STARDOCK_BASE},latest"; then
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_BASE}"
   "${DIR}/stardock-containermake" "${STARDOCK_BASE}" "${STARDOCK_BIN}/stardock-scripts-base-container"
+  "${DIR}/stardock-docker-container-destroy" "${STARDOCK_BASE}"
 fi
