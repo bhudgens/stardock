@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# vim:syn=sh
+### Usage:
+###    stardock-hup-nginx
+###
+### Requests that the hupper hup or start nginx as appropriate
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+die_on_error
+run_as_root_or_die
+
+touch "${STARDOCK_NGINX_HUP_TURD}"
