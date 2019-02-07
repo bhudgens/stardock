@@ -22,6 +22,7 @@ EOF
 mkdir -p "${BUILDPACKS}"
 
 pushd "${BUILDPACKS}" > /dev/null
+IFS=$'\n'
 for buildpack_url in $(buildpack_urls); do
   # Grab the name from:
   # https://github.com/igroff/--> (heroku-buildpack-nodejs) <-- here .git#starphleet
