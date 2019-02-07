@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+### Usage:
+###    stardock-attach <service>
+###
+### Fuzzy match and make attaching to instances easier
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+die_on_error
+run_as_root_or_die
+
+# Make sure they pass 'something' to search for
+[ -z "${service}" ] && echo Please pass the name of a container && exit 1
+
+
+# Now figure out which container they want and attach
+echo "Connect to which instance:"
+select container in $(docker container ls --format '{{.Names}}' | grep ${service}); do
+  [ -n ${container} ] && docker exec -it "${service}" /bin/sh -c "su - ubuntu"
+  break;
+done
