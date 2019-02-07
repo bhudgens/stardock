@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+### Usage:
+###    starphleet-cleanup
+### --help
+###
+### Call this to toss all starphleet state on shutdown
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+test -d "${STARDOCK_ROOT}/node_modules" && rm -rf "${STARDOCK_ROOT}/node_modules"
+test -d ${STARDOCK_TMP} && rm -rf ${STARDOCK_TMP}/*
+test -d "${ADMIRAL_HOME}/.npm" && rm -rf "${ADMIRAL_HOME}/.npm"
+
+# We are going to start with a "fresh" state
+test -d "${CURRENT_ORDERS}" \
+  && find "${CURRENT_ORDERS}" -type f -name ".orders_sha" \
+   | sudo xargs rm > /dev/null 2>&1
+
+#unpublish services from nginx
+test -d "${STARDOCK_NGINX_RUNTIME}/published" && rm -rf "${STARDOCK_NGINX_RUNTIME}/published"
+test -d "${STARDOCK_NGINX_RUNTIME}/published_bare" && rm -rf "${STARDOCK_NGINX_RUNTIME}/published_bare"
+test -d "${STARDOCK_NGINX_RUNTIME}/beta_groups" && rm -rf "${STARDOCK_NGINX_RUNTIME}/beta_groups"
+
+# Exit clean
+exit 0
