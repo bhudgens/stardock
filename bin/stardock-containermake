@@ -128,6 +128,17 @@ if [ -z "${SERVE_CONTAINERS}" ] \
      --add-host="localship:${BRIDGE_IP}" \
      --name "${CONTAINER_NAME}" ${base_container_name}:latest
 
+    # These are files we'll want to refresh every time we
+    # start a new container
+    STARDOCK_FILES_TO_CP="
+      ${STARDOCK_PRIVATE_KEY}
+      ${STARDOCK_ROOT}/.config
+    "
+
+    for file in $STARDOCK_FILES_TO_CP; do
+      docker_cp "$file" "$file"
+    done
+
     # XXX: WE WANT TO DELETE THIS WHEN DONE DEV'ING
     ##########################################################
     # docker_exec 'mkdir -p $(dirname '"${STARDOCK_PRIVATE_KEY}"')'
