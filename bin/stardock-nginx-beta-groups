@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+### Usage:
+###    starphleet-nginx-beta-groups
+### --help
+###
+### Configure nameh beta group maps.
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+die_on_error
+run_as_root_or_die
+
+# Purge all beta groups and beta configs
+[ -d "${STARDOCK_NGINX_RUNTIME}/beta_groups" ]  && rm -rf "${STARDOCK_NGINX_RUNTIME}/beta_groups"
+
+# Purge any beta files
+if [ -d "${STARDOCK_NGINX_RUNTIME}/published/" ]; then
+  for file in $(find "${STARDOCK_NGINX_RUNTIME}/published/" -type f -regex ".*\.beta$"); do
+    rm "${file}"
+  done
+fi
+
+# Make the beta_group again
+mkdir -p "${STARDOCK_NGINX_RUNTIME}/beta_groups"
+
+BETA_GROUP_CONFIG_DEFAULT_DIR="${HEADQUARTERS_LOCAL}/beta_groups"
+BETA_GROUP_CONFIGS="${BETA_GROUP_CONFIGS:-$BETA_GROUP_CONFIG_DEFAULT_DIR}"
+
+#set a beta group if the remote user is in the list of beta users
+if [ -d "${BETA_GROUP_CONFIGS}" ]; then
+  for BETA_GROUP in $(find "${BETA_GROUP_CONFIGS}" -type f | grep -v '\.git'); do
+    info beta group $(basename ${BETA_GROUP})
+
+    [ "${BETA_GROUP}" = "README.md" ] && continue
+    #user authentication style
+    BETA_GROUP_CONF="${STARDOCK_NGINX_RUNTIME}/beta_groups/$(basename ${BETA_GROUP}).conf"
+    echo "  map \$remote_user \$stardock_beta_$(basename ${BETA_GROUP}) {" >> "${BETA_GROUP_CONF}"
+    echo "   default 0;" >> "${BETA_GROUP_CONF}"
+    for BETA_USER in $(cat "${BETA_GROUP}" | tr '[:upper:]' '[:lower:]' | sort | uniq)
+    do
+      echo "   ${BETA_USER} 1;" >> "${BETA_GROUP_CONF}"
+    done
+    echo "  }" >> "${BETA_GROUP_CONF}"
+    #cookie style
+    echo "  map \$cookie_${USER_IDENTITY_COOKIE} \$stardock_beta_$(basename ${BETA_GROUP})_cookie  {" >> "${BETA_GROUP_CONF}"
+    echo "   default 0;" >> "${BETA_GROUP_CONF}"
+    for BETA_USER in $(cat "${BETA_GROUP}" | tr '[:upper:]' '[:lower:]' | sort | uniq)
+    do
+      echo "   ${BETA_USER} 1;" >> "${BETA_GROUP_CONF}"
+    done
+    echo "  }" >> "${BETA_GROUP_CONF}"
+  done
+fi
+
+# Go through all the orders and generate all the beta configs
+for ORDERS_FILE in $(find "${HEADQUARTERS_LOCAL}" | grep '/orders$' | grep -v '/git')
+do
+  # Orders will contain BETAS as an array.. so we clear and declare
+  # the BETAS variable as an associative array
+  unset BETAS
+  declare -A BETAS
+  # Slurp in the beta configs for this orders file by running it
+  run_orders "${ORDERS_FILE}"
+
+  # Get only the 'name' of these orders
+  ORDER_NAME=$(echo "${ORDERS_FILE}" | sed -e 's[/orders$[[' | sed -e "s[${HEADQUARTERS_LOCAL}/\?[[")
+  # Beta config name
+  BETA_CONF="${STARDOCK_NGINX_RUNTIME}/published/${ORDER_NAME}.beta"
+
+  for beta in "${!BETAS[@]}"
+  do
+    # Beta groups need a corresponding file with a list of users
+    # for the beta.  If that file doesn't exist the following
+    # will create variable references that don't exist.  We
+    # check to see if the corresponding file is there before we
+    # create the config and skip otherwise
+    [ ! -f "${BETA_GROUP_CONFIGS}/${beta}" ] && continue
+    echo "
+      if (\$stardock_beta_${beta}) {
+        rewrite ^/${ORDER_NAME}/(.*) ${BETAS[$beta]}/\$1 last;
+      }
+      if (\$stardock_beta_${beta}_cookie) {
+        rewrite ^/${ORDER_NAME}/(.*) ${BETAS[$beta]}/\$1 last;
+      }
+    " >> "${BETA_CONF}"
+  done
+done

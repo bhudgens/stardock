@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# vim:syn=sh
+### Usage:
+###    stardock-nginx-ldap-servers
+### --help
+###
+### Configure named LDAP server entries that can be referenced by individual
+### services.
+###
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+die_on_error
+
+[ -d "${STARDOCK_NGINX_RUNTIME}/ldap_servers" ] \
+  && rm -rf "${STARDOCK_NGINX_RUNTIME}/ldap_servers"
+
+mkdir -p "${STARDOCK_NGINX_RUNTIME}/ldap_servers"
+
+for LDAP_SERVER in $(find "${HEADQUARTERS_LOCAL}/ldap_servers" -type f); do
+  info ${LDAP_SERVER}
+  source ${LDAP_SERVER}
+cat << EOF > "${STARDOCK_NGINX_RUNTIME}/ldap_servers/$(basename ${LDAP_SERVER}).conf"
+  ldap_server $(basename ${LDAP_SERVER}) {
+   url ${LDAP_URL};
+   binddn "${LDAP_USER}";
+   binddn_passwd "${LDAP_PASSWORD}";
+   group_attribute uniquemember;
+   group_attribute_is_dn on;
+   connections 8;
+   require valid_user;
+  }
+EOF
+done
