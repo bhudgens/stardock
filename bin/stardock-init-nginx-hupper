@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+# vim:syn=sh
+### Usage:
+###    stardock-init-nginx-hupper
+### --help
+###
+### Responsible for configuring NGINX and then either hupping or restarting
+### the main process
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+run_as_root_or_die
+
+while [ 1 ]; do
+  if [ -f "${STARDOCK_NGINX_HUP_TURD}" ]; then
+
+    # Keep track of any errors on publish and do not attempt a hup
+    # if one happens
+    unset ERROR
+
+    # just to avoid getting stuck, we'll remove the hup turd first
+    rm "${STARDOCK_NGINX_HUP_TURD}" # yes we could race, but meh
+
+    ######################
+    # Publish
+    ######################
+
+    # Remove the current configs and start fresh
+    rm "${STARDOCK_NGINX_RUNTIME}"/published/* 2> /dev/null
+    rm "${STARDOCK_NGINX_RUNTIME}"/published_bare/* 2> /dev/null
+    rm "${STARDOCK_NGINX_RUNTIME}"/proxy_for/* 2> /dev/null
+    rm "${STARDOCK_NGINX_RUNTIME}"/named_servers/* 2> /dev/null
+
+    # Install SSL keys from HQ
+    [ -d "${STARDOCK_NGINX_RUNTIME}/published" ] || mkdir -p "${STARDOCK_NGINX_RUNTIME}/published"
+    if [ ! "$(diff -r ${HEADQUARTERS_LOCAL}/ssl/ ${STARDOCK_NGINX_RUNTIME}/published/ | grep -v "Only in ${STARDOCK_NGINX_RUNTIME}/published/")" == "" ] ; then
+      info "init-nginx|ssl_from:${HEADQUARTERS_LOCAL}/ssl|ssl_to:${STARDOCK_NGINX_RUNTIME}/published/"
+      cp ${HEADQUARTERS_LOCAL}/ssl/* ${STARDOCK_NGINX_RUNTIME}/published/
+    fi
+
+    # Run all the accessory nginx configuration tools
+    "${DIR}/stardock-nginx-ldap-servers"
+    "${DIR}/stardock-nginx-beta-groups"
+    "${DIR}/stardock-nginx-acl-rules"
+
+    # CURRENT_ORDERS dir is the 'master' of what should be published
+    for CONTAINER_FILE in $(find "${CURRENT_ORDERS}" -type f -iname ".container")
+    do
+      # Extract the container name that should be deployed
+      name=$(cat "${CONTAINER_FILE}")
+
+      # Extract the name of the order
+      order="${CONTAINER_FILE%/*}"
+      order="${order##*/}"
+
+      STATUS_FILE="${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"
+
+      # Now attempt to write the nginx configs (stardock-publish)
+      if ! "${DIR}/stardock-publish" "${name}" "${order}" "${HEADQUARTERS_LOCAL}/${order}/orders" ; then
+        # Errors on publish only happen if we can't find the IP which should
+        # not be possible because the container isn't published until its
+        # successfully running
+        warn "Publish Failed - Container: ${name} / Order: ${order}"
+        echo 'publish failed' > "${STATUS_FILE}"
+        # If we have an error then we fall back to the last known good container
+        if [ -f "${CURRENT_ORDERS}/${order}/.last_known_good_container" ]; then
+          name=$(cat "${CURRENT_ORDERS}/${order}/.last_known_good_container")
+          warn "Falling back to container ${name}"
+          if ! "${DIR}/stardock-publish" "${name}" "${order}" "${HEADQUARTERS_LOCAL}/${order}/orders" ; then
+            # If the fallback fails too we need to purge the files that are triggering a deploy
+            # and as a final measure we attempt an additional soft deploy.  If that succeeds
+            # these files get re-created.  If it STILL fails, somethings is broken
+            # bad and we don't want to keep trying this container
+            warn Fallback failed to container "${name}" - Attempting Soft Deploy
+            rm "${CONTAINER_FILE}"
+            rm "${CURRENT_ORDERS}/${order}/.last_known_good_container"
+            continue;
+          fi
+        fi
+      fi
+
+      ###################################
+      # Support for 'publish' command
+      ###################################
+      # If the above stardock-publish worked and if we have any 'publish' files
+      # we need to also publish the nginx configs for our publish files.  This
+      # should be safe at this point since the above completed its health checks.
+      for publish_file in $(find "${CURRENT_ORDERS}/${order}/".publish_* 2> /dev/null); do
+        # Purge last run
+        unset CHECK
+        unset PUBLISH_DESTINATION
+
+        # Extract the publish destination off the file name
+        PUBLISH_DESTINATION=$(basename "${publish_file}" | sed -e 's|.publish_||')
+        # Double check that the publish file isn't stale by checking the original
+        # orders for the command
+        [ -f "${HEADQUARTERS_LOCAL}/${PUBLISH_DESTINATION}/orders" ] && CHECK=$(cat ${HEADQUARTERS_LOCAL}/${PUBLISH_DESTINATION}/orders | grep publish | grep "${order}")
+        if [ -n "${CHECK}" ]; then
+          warn "Publishing ${order} to ${PUBLISH_DESTINATION}"
+          "${DIR}/stardock-publish" "${name}" "${order}" "${HEADQUARTERS_LOCAL}/${order}/orders" "${HTPASSWD}" "${LDAP}" "${JWT}" "${PUBLISH_DESTINATION}"
+        else
+          warn "Stale Publish Command: ${publish_file}"
+          rm "${publish_file}"
+        fi
+      done
+
+      # Keep track of the last good container as a fallback
+      echo "${name}" > "${CURRENT_ORDERS}/${order}/.last_known_good_container"
+
+    done
+
+    ######################
+    # Validate Config / HUP
+    ######################
+    function docker_run() {
+      # We are not destroying the image we just made - only the container
+      # so we can get a clean start with the image
+      CONFIG_TEST_CONTAINER_NAME="${STARDOCK_NGINX_CONTAINER}-config-test"
+      "${DIR}/stardock-docker-container-destroy" "${CONFIG_TEST_CONTAINER_NAME}"
+      info "init-nginx|starting:${CONFIG_TEST_CONTAINER_NAME}" #|args:$@"
+      eval docker run \
+        --rm \
+        -v "${STARDOCK_LOGS}":"/var/log/docker" \
+        -v "${STARDOCK_NGINX_RUNTIME}":"${STARDOCK_NGINX_RUNTIME}" \
+        -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
+        --network "${STARDOCK_NETWORK_NAME}" \
+        --name "${CONFIG_TEST_CONTAINER_NAME}" \
+        "${STARDOCK_NGINX_CONTAINER}" "$@"
+    }
+
+    if [ -z "${ERROR}" ] \
+    && docker_run ${STARDOCK_NGINX_BIN} \
+      -p "${STARDOCK_NGINX_RUNTIME}" \
+      -c ${STARDOCK_NGINX_CONF} \
+      -t;
+    then
+      # the config is good, let's get nginx running
+      if [ -f "${STARDOCK_RESTART_NGINX_HUP_TURD}" ]; then
+        docker kill -s QUIT "${STARDOCK_NGINX_CONTAINER}"
+        rm "${STARDOCK_RESTART_NGINX_HUP_TURD}"
+      else
+        docker kill -s HUP "${STARDOCK_NGINX_CONTAINER}"
+      fi
+    else
+      #we have a bad configuration, we'll need to do something about that
+      warn "nginx configuration fails validity test, will not restart or apply configuration changes"
+      # docker_run ${STARDOCK_NGINX_BIN} \
+      #   -p "${STARDOCK_NGINX_RUNTIME}" \
+      #   -c ${STARDOCK_NGINX_CONF} -t;
+    fi
+  fi
+
+  sleep "${STARDOCK_PULSE}"
+
+done

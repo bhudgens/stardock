@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+### Usage:
+###    stardock-init-nginx
+### --help
+###
+### One of the primary init threads that manages monitoring
+### repos.  This will look through the HQ's and try to
+### start any orders files
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+# vim:ft=sh
+
+STARDOCK_NGINX_PORTS_ARG=${STARDOCK_NGINX_PORTS_ARG:-"-p 80:80 -p 443:443"}
+
+function docker_run() {
+  # We are not destroying the image we just made - only the container
+  # so we can get a clean start with the image
+  "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
+  info "init-nginx|starting:${STARDOCK_NGINX_CONTAINER}" #|args:$@"
+  eval docker run \
+    --rm \
+    ${STARDOCK_NGINX_PORTS_ARG} \
+    -v "${STARDOCK_LOGS}":"/var/log/docker" \
+    -v "${STARDOCK_NGINX_RUNTIME}":"${STARDOCK_NGINX_RUNTIME}" \
+    -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
+    --network "${STARDOCK_NETWORK_NAME}" \
+    --name "${STARDOCK_NGINX_CONTAINER}" \
+    "${STARDOCK_NGINX_CONTAINER}" "$@"
+}
+
+trap "{ exit 0; }" SIGTERM EXIT
+
+while [ 1 ]; do
+  docker_run ${STARDOCK_NGINX_BIN} -p "${STARDOCK_NGINX_RUNTIME}" -c "${STARDOCK_NGINX_CONF}"
+done
