@@ -182,11 +182,7 @@ function validate_security() {
 }
 
 function get_container_ip() {
-  # TODO: Install JQ and do that instead
-  docker container inspect "${1}" \
-    | grep '"IP Address"' \
-    | tail -n 1 \
-    | cut -f4 -d '"'
+  docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$1" 
 }
 
 function run_orders()
