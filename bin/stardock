@@ -8,21 +8,18 @@
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
+run_as_root_or_die
+
 ###################################################################
 ## List of init jobs we should run
 ###################################################################
 INITS=${INITS:-"
+  ${DIR}/stardock-init-monitor-headquarters
   ${DIR}/stardock-init-monitor-repos
+  ${DIR}/stardock-init-nginx
+  ${DIR}/stardock-init-nginx-hupper
+  ${DIR}/stardock-init-reaper
 "}
-
-###################################################################
-## Guards - Don't Move Forward Unless We Should
-###################################################################
-function punt() {
-  echo "$1"
-  exit 1
-}
-
 
 ###################################################################
 ## Runs a sub process and keeps track of it
@@ -30,40 +27,45 @@ function punt() {
 declare -A CHILDREN
 function run_daemon() {
   # run daemon
-  eval "$1" &
-  CHILDREN["$1"]=$!
+  local INIT_COMMAND=$(echo $1 | perl -pe 's|\s*||g')
+  "$INIT_COMMAND" > "${STARDOCK_LOGS}/$(basename $INIT_COMMAND)" 2>&1 &
+  CHILDREN["$INIT_COMMAND"]=$!
 }
 
 ###################################################################
 ## Let's take care of our children when we die
 ###################################################################
-function kill_children() {
-  for init in "${!CHILDREN[@]}"; do
-    if [ -e "/proc/${CHILDREN[$init]}" ]; then
-      echo "Killing $init ${CHILDREN[$init]}"
-      kill "${CHILDREN[$init]}"
-      wait "${CHILDREN[$init]}"
-    fi
-  done
+# XXX: Doesn't account for parent PID and fails when run as sudo
+# trap "trap - SIGTERM && kill -- $$" SIGINT SIGTERM EXIT
+function kill_stardock_init_serve_order() {
+  ps auxw | grep stardock-init-serve-order | grep -v grep | awk '{print $2}' | xargs kill
 }
 
-trap "{ kill_children; exit 0; }" SIGTERM EXIT
+# We want to kill the parent process as well if we are run
+# as sudo which is likely the case most the time unless
+# we start from init.
+trap "exit" INT TERM
+trap "{ kill_stardock_init_serve_order; kill 0; }" EXIT
 
 ###################################################################
-## Setup Any Environment Stuffz
+## Install all the basics
 ###################################################################
+"${DIR}/stardock-cleanup"
 "${DIR}/stardock-install-default-buildpacks"
 "${DIR}/stardock-install-docker-network"
 "${DIR}/stardock-install-base-container"
+"${DIR}/stardock-install-nginx"
 
 ###################################################################
 ## Start Things Off
 ###################################################################
 IFS=$'\n'
 for init in $INITS; do
-  info "stardock|starting:$1"
+  info "stardock|starting:$init"
   run_daemon "${init}"
 done
+
+announce "------------ Stardock Started Successfully ------------"
 
 ###################################################################
 ## Watchdog - Keep Our Inits Running
@@ -76,8 +78,4 @@ while [ 1 ]; do
     fi
   done
   sleep "${STARDOCK_PULSE}"
-  sleep 10000000000
-  # XXX: Delete me
-  # echo XXX: DEV EXIT
-  # exit 0
 done
