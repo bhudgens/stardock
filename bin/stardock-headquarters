@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# vim:syn=sh
+### Usage:
+###    stardock-headquarters [<url>]
+### --help
+###
+### Set the headquarters <url>. This is where the phleet will look for
+### orders.
+### The <url> can include a #branch on the end which will refer to that specific
+### branch rather than default master.
+###
+### If <url> is not specified, this script will try to print the headquarters.
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+run_as_root_or_die
+
+if [ -n "${url}" ]; then
+  echo export HEADQUARTERS_REMOTE="${url}" > "${HEADQUARTERS_SOURCE}"
+  [ -d "${HEADQUARTERS_LOCAL}" ] && rm -rf "${HEADQUARTERS_LOCAL}"/..?* "${HEADQUARTERS_LOCAL}"/.[!.]* ${HEADQUARTERS_LOCAL}/*
+  info Headquarters set to ${url}
+elif [ -f "${HEADQUARTERS_SOURCE}" ]; then
+  info Headquarters is $(cat ${HEADQUARTERS_SOURCE})
+else
+  error no headquarters url provided
+fi
