@@ -177,6 +177,11 @@ if [ -z "${SERVE_CONTAINERS}" ] \
   # docker_exec "rm -rf '/etc/starphleet.d'"
   # docker_cp /etc/starphleet.d /etc/starphleet.d
 
+  #host file updates
+  info "containermake|user_setup:${CONTAINER_NAME}"
+  docker_exec "mkdir -p /home/${STARDOCK_APP_USER}/build"
+  docker_cp "${BUILDPACKS}" "/home/${STARDOCK_APP_USER}/build"
+
   # Persist the HQ inside the container
   # but only if the HQ dir exists and
   # the order name is set.  If we're making
@@ -195,18 +200,18 @@ if [ -z "${SERVE_CONTAINERS}" ] \
     if [ -d "${HEADQUARTERS_LOCAL}/${order}/git/" ]; then
       rsync -ra "${HEADQUARTERS_LOCAL}/${order}/git/" "${HQ_TMP_DEST}/${order}/git/"
     fi
+
     docker_cp "${HQ_TMP_DEST}" "${HEADQUARTERS_LOCAL}"
+    [ -d "${HQ_TMP_DEST}" ] && rm -rf "${HQ_TMP_DEST}"
+
+    docker_cp "${HEADQUARTERS_LOCAL}/${order}/git" "/home/${STARDOCK_APP_USER}/app"
   fi
+
+  info "containermake|user_dir_permissions:${CONTAINER_NAME}"
+  docker_exec "chown -R ${STARDOCK_APP_USER}:${STARDOCK_APP_USER} /home/${STARDOCK_APP_USER}"
 
   #this is the build script for the container itself
   info "containermake|build_script_setup:${CONTAINER_NAME}"
-  #start up the container, waiting for the network, and then run the container build script
-
-  #host file updates
-  docker_exec "mkdir -p /home/${STARDOCK_APP_USER}/build"
-  docker_cp "${BUILDPACKS}" "/home/${STARDOCK_APP_USER}/build"
-  docker_exec "chown -R ${STARDOCK_APP_USER}:${STARDOCK_APP_USER} /home/${STARDOCK_APP_USER}"
-
   BUILD_SCRIPT_FULL_PATH="${STARDOCK_BIN}/build_script"
   docker_cp "${build_script}" "${BUILD_SCRIPT_FULL_PATH}"
   docker_exec "chmod +x '${BUILD_SCRIPT_FULL_PATH}'"
@@ -261,21 +266,34 @@ fi
 # fi
 
 
-if [ "${run}" == "true" ]; then
-  info leaving ${CONTAINER_NAME} running
-else
-  docker stop "${CONTAINER_NAME}"
-fi
+# if [ "${run}" == "true" ]; then
+#   info "containermake|leave_running:${CONTAINER_NAME}"
+# else
+#   docker stop "${CONTAINER_NAME}"
+# fi
 
 # Make our container image
-DATESTAMP="$(date +d%y%m%d-d%H%M%S)"
+# DATESTAMP="$(date +d%y%m%d-d%H%M%S)"
+
+[ -n "${base_container_name}" ] \
+  && IMAGE_NAME="${base_container_name}:${CONTAINER_NAME}" \
+  || IMAGE_NAME="${STARDOCK_BASE}:latest"
+
+[ -n "${base_container_name}" ] && [ -n "${order}" ]\
+  && IMAGE_TAG_NAME="${order}" \
+  || IMAGE_TAG_NAME="${STARDOCK_BASE}"
+
 docker commit \
   -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
-  "${CONTAINER_NAME}" "${CONTAINER_NAME}:${DATESTAMP}"
+  "${CONTAINER_NAME}" "${IMAGE_NAME}"
 
 docker image tag \
-  "${CONTAINER_NAME}:${DATESTAMP}" \
-  "${CONTAINER_NAME}:latest"
+  "${IMAGE_NAME}" \
+  "services.glgresearch.com:${IMAGE_TAG_NAME}"
+
+docker image tag \
+  "${IMAGE_NAME}" \
+  "${IMAGE_TAG_NAME}:latest"
 
 info "containermake|completed:${CONTAINER_NAME}"
 # Remove lock file to guarantee release
