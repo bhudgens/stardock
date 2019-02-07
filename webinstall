@@ -12,38 +12,24 @@
 ##
 ##############################################################################
 ## Locations to this repo
-STARPHLEET_REPO=${STARPHLEET_REPO:-"https://github.com/wballard/starphleet.git"}
-STARPHLEET_BRANCH=${STARPHLEET_BRANCH:-master}
 
 ##############################################################################
 ## Main Foo
 ##############################################################################
 
-[ -n "${HEADQUARTERS_URL}" ] || read -p "Please paste the SSH git URL to your headquarters:  " HEADQUARTERS_URL
+apt-get update -y
+apt-get upgrade -y
 
-# We're gonna need git
-apt-get install -y git
-# Now grab this repo
-git clone -b "${STARPHLEET_BRANCH}" "${STARPHLEET_REPO}"
-# Head into scripts
-cd starphleet/scripts
-# Move launcher into place
-cp ./starphleet-launcher /usr/bin
-# Let the magic begin
-./starphleet-install
-# Set the headquarters
-starphleet-headquarters "${HEADQUARTERS_URL}"
+apt install -y apt-transport-https ca-certificates curl software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
-source `which tools`
+apt update -y
+apt install -y docker-ce jq
 
-cat << EOF
+STARDOCK_INSTALL_DIR="/var/stardock"
 
-NOTICE:
+mkdir -p "${STARDOCK_INSTALL_DIR}"
+git clone 'https://github.com/bhudgens/stardock.git' "${STARDOCK_INSTALL_DIR}"
 
-Installation is not finished.
-
-You need to copy your GitHub ssh private key to:
-
-   ${PRIVATE_KEYS}
-
-EOF
+pushd "${STARDOCK_INSTALL_DIR}" > /dev/null
