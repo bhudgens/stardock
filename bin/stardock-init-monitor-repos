@@ -16,8 +16,13 @@ declare -a PUBLISH_PORTS
 
 #auto deploy each ordered service, really need to use grep here
 #find doesn't work out on that / pattern
-for order in $(find "${HEADQUARTERS_LOCAL}" | grep '/orders$' | grep -v '/git' )
-do
-  SERVICE_NAME=$(echo "${order}" | sed -e 's[/orders$[[' | sed -e "s[${HEADQUARTERS_LOCAL}/\?[[")
-  "${DIR}/stardock-serve-one-order" "${SERVICE_NAME}" "wait"
+while [ 1 ]; do
+  if [ -d "${HEADQUARTERS_LOCAL}" ]; then
+    for order in $(find "${HEADQUARTERS_LOCAL}" | grep '/orders$' | grep -v '/git' ); do
+      SERVICE_NAME=$(echo "${order}" | sed -e 's[/orders$[[' | sed -e "s[${HEADQUARTERS_LOCAL}/\?[[")
+      "${DIR}/stardock-serve-one-order" "${SERVICE_NAME}" "wait"
+    done
+    trace -----------------------
+  fi
+  sleep "${STARDOCK_PULSE}"
 done
