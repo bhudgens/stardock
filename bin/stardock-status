@@ -137,7 +137,7 @@ EOF
       # Snag all the infoz about this specific container
       CONTAINER=$(echo ${container_status_file} | sed -e 's/.*stardockstatus\.//')
       STATUS=$(cat "${container_status_file}")
-      LOCAL_IP=$([ -f "${container_status_file}.ip" ] && cat "${container_status_file}.ip")
+      LOCAL_IP=$(get_container_ip "${CONTAINER}")
       LOCAL_PORT=$([ -f "${container_status_file}.port" ] && cat "${container_status_file}.port")
 
       info "    ${CONTAINER} - [${LOCAL_IP}:${LOCAL_PORT}] - [${STATUS}]"
