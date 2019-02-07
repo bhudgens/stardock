@@ -25,34 +25,56 @@ function docker_cp() {
 
 function docker_create() {
   docker create -it \
+   -v "${STARDOCK_LOGS}":"/var/log/docker" \
+   -v "${STARDOCK_NGINX_RUNTIME}":"${STARDOCK_NGINX_RUNTIME}" \
    -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
    --add-host="localship:${BRIDGE_IP}" \
    --name "${STARDOCK_NGINX_CONTAINER}" ${STARDOCK_BASE}:latest
 }
 
-if ! docker image ls --format '{{.Repository}},{{.Tag}}' | grep "^${STARDOCK_NGINX_CONTAINER},"; then
+if ! docker image ls --format '{{.Repository}},{{.Tag}}' | grep -q "^${STARDOCK_NGINX_CONTAINER},"; then
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
 
   bridge_ip
   docker_create
 
-  docker_cp "${STARDOCK_ROOT}/nginx" "${STARDOCK_ROOT}/nginx"
+  # We're going to update the overlays dir
+  # in the container in case it has changed
+  # since the base container was made.
+  docker_exec "rm -rf ${STARDOCK_OVERLAYS}"
+
+  STARDOCK_FILES_TO_CP="
+    ${STARDOCK_ROOT}/nginx
+    ${STARDOCK_OVERLAYS}
+    ${STARDOCK_PRIVATE_KEY}
+    ${STARDOCK_ROOT}/.config
+  "
+  for file in $STARDOCK_FILES_TO_CP; do
+    docker_cp "$file" "$file"
+  done
 
   BUILD_SCRIPT_FULL_PATH="${STARDOCK_BIN}/stardock-scripts-nginx"
   docker_cp "${BUILD_SCRIPT_FULL_PATH}" "${BUILD_SCRIPT_FULL_PATH}"
   docker_exec "chmod +x '${BUILD_SCRIPT_FULL_PATH}'"
   docker_exec "${BUILD_SCRIPT_FULL_PATH}"
 
-  exit 0
-  # Make our container image
-  DATESTAMP="$(date +d%y%m%d-d%H%M%S)"
+
+
+  IMAGE_NAME="${STARDOCK_BASE}:${STARDOCK_NGINX_CONTAINER}"
+  IMAGE_TAG_NAME="${STARDOCK_NGINX_CONTAINER}"
   docker commit \
     -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
-    "${CONTAINER_NAME}" "${CONTAINER_NAME}:${DATESTAMP}"
+    "${STARDOCK_NGINX_CONTAINER}" "${IMAGE_NAME}"
 
   docker image tag \
-    "${CONTAINER_NAME}:${DATESTAMP}" \
-    "${CONTAINER_NAME}:latest"
+    "${IMAGE_NAME}" \
+    "services.glgresearch.com:${IMAGE_TAG_NAME}"
 
-  info made container ${CONTAINER_NAME}
+  docker image tag \
+    "${IMAGE_NAME}" \
+    "${IMAGE_TAG_NAME}:latest"
+
+  "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
+
+  info "install-nginx|created_container:${STARDOCK_NGINX_CONTAINER}"
 fi
