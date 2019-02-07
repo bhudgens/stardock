@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# vim:syn=sh
+### Usage:
+###    stardock-healthcheck <name> <order> <url>
+### --help
+###
+### Check if a container is ready by looking for a successful http return.
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+STATUS_FILE="${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"
+
+HEALTHCHECK_TIMEOUT=${HEALTHCHECK_TIMEOUT:-30}
+
+[ -f "${STATUS_FILE}.port" ] && CONTAINER_PORT=$(cat "${STATUS_FILE}.port")
+CONTAINER_IP=$(get_container_ip "${name}")
+URL=${url:-/}
+
+if [ -z ${CONTAINER_IP} ] || [ -z ${CONTAINER_PORT} ]; then
+  error "Cannot find container ip address or port"
+  exit 1
+fi
+
+TEST_GET="http://${CONTAINER_IP}:${CONTAINER_PORT}${URL}"
+TEST_COMMAND="curl -X GET --connect-timeout ${HEALTHCHECK_TIMEOUT} -m ${HEALTHCHECK_TIMEOUT} -o /dev/null -s -w %{response_code} ${TEST_GET}"
+info "healthcheck|attempting:${TEST_COMMAND}"
+
+RESULT=`${TEST_COMMAND}`
+if [ ${RESULT} == "200" ] \
+|| [ ${RESULT} == "301" ] \
+|| [ ${RESULT} == "302" ] \
+|| [ ${RESULT} == "401" ]; then
+  exit 0
+fi
+
+error Failed Healthcheck - ${TEST_GET}
+exit 1
