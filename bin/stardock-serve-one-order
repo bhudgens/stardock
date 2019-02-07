@@ -117,7 +117,7 @@ if [ -n "${DEPLOY_REASON}" ]; then
   fi
 
   # This allows the user to pin a service to a specific container
-  # if this server is purely a "serve" starphleet server
+  # if this server is purely a "serve" stardock server
   #if is_container_storage_on_s3 \
   #&& [ -n "${SERVICE_PINNED_TO_CONTAINER}" ]; then
     #if [ -z "${BUILD_CONTAINERS}" ] \
