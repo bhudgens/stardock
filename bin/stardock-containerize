@@ -69,14 +69,6 @@ EOF
 cat << EOF >> ${CONTAINER_BUILD_SCRIPT}
 info "build_script|installing_service:\${HOME}/app"
 
-if [ "${git_url}" != "-" ]; then
-  info "build_script|downloading_app:\${HOME}/app"
-  sudo -E mkdir -p "\${APP_IN}"
-  sudo -E "\${DIR}/stardock-git-sync" "${git_url}" \${APP_IN}
-  info "build_script|fix_permissions:\${HOME}/app"
-  sudo chown -R ${STARDOCK_APP_USER}:${STARDOCK_APP_USER} "/home/${STARDOCK_APP_USER}"
-fi
-
 export ORDERS_NAME="$(basename $(dirname $ORDERS))"
 info "build_script|running_orders:\${ORDERS_NAME}"
 run_orders ${ORDERS}
