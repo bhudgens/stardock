@@ -10,7 +10,10 @@ export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
 # Kill any container referencing this image
-for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep "^${image_name},"); do
+# The egrep may be confusing.  We are testing if the container name is
+# in the first column or the last column.  We're doing it this way so
+# that a partial match doesn't give us a false positive
+for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep "^${image_name},|,${image_name}$"); do
   IMAGE_NAME=$(echo $container | cut -f1 -d',')
   FRIENDLY_NAME=$(echo $container | cut -f2 -d',')
   docker stop "${FRIENDLY_NAME}" > /dev/null
@@ -18,14 +21,14 @@ for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep "^${ima
   docker rm "${FRIENDLY_NAME}"
 done
 
-# Kill anything with this image name
-for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep ",${image_name}$"); do
-  IMAGE_NAME=$(echo $container | cut -f1 -d',')
-  FRIENDLY_NAME=$(echo $container | cut -f2 -d',')
-  docker stop "${FRIENDLY_NAME}" > /dev/null
-  info "killing_container|${FRIENDLY_NAME}"
-  docker rm "${FRIENDLY_NAME}"
-done
+# # Kill anything with this image name
+# for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep ",${image_name}$"); do
+#   IMAGE_NAME=$(echo $container | cut -f1 -d',')
+#   FRIENDLY_NAME=$(echo $container | cut -f2 -d',')
+#   docker stop "${FRIENDLY_NAME}" > /dev/null
+#   info "killing_container|${FRIENDLY_NAME}"
+#   docker rm "${FRIENDLY_NAME}"
+# done
 
 # Now we can kill the actual image
 for image in $(docker image ls --format '{{.Repository}},{{.Tag}}' | egrep "^${image_name},"); do
