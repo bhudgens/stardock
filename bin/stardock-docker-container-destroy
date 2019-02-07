@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # vim:syn=sh
 ### Usage:
-###    stardock-docker-container-destroy <image_name>
+###    stardock-docker-container-destroy <container_name>
 ### --help
 ###
 ### This will stay persistent as long as the container stays running.  We'll
