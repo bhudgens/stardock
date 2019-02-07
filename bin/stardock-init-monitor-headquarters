@@ -1,5 +1,14 @@
-#!/usr/bin/env stardock-launcher
+#!/usr/bin/env bash
+### Usage:
+###    stardock-init-monitor-headquarters
+### --help
+###
+### One of the primary init threads that manages monitoring
+### repos.  This will look through the HQ's and try to
+### start any orders files
 # vim:ft=sh
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
 
 #####################################################################
 # Monitor Headquarters
