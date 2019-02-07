@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# vim:syn=sh
 ### Usage:
 ###    stardock
 ### --help
