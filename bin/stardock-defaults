@@ -33,10 +33,13 @@ export STARDOCK_NETWORK_GW="10.0.0.1"
 # Support default set elsewhere
 export HEADQUARTERS_ENV="${HEADQUARTERS_ENV:-${HEADQUARTERS_LOCAL}/.stardock}"
 
+# NGINX Specific ENVS
+export STARDOCK_OVERLAY_NGINX="${STARDOCK_OVERLAYS}/nginx"
 export STARDOCK_NGINX_CONTAINER="stardock-nginx"
 export STARDOCK_NGINX_RUNTIME="${STARDOCK_RUN}/nginx"
 export STARDOCK_NGINX_CONF="${STARDOCK_NGINX_RUNTIME}/nginx.conf"
-export STARDOCK_NGINX_BIN="${STARDOCK_NGINX_RUNTIME}/nginx"
+export STARDOCK_NGINX_BIN="${STARDOCK_ROOT}/nginx/nginx"
+export STARDOCK_NGINX_DNS_CACHE_TIMEOUT=5
 
 # Things in our cache
 export STARDOCK_PRIVATE_KEY="${STARDOCK_PRIVATE_KEY:-${STARDOCK_CACHE}/private.key}"
@@ -69,7 +72,6 @@ export USER_IDENTITY_HEADER="x-identity"
 export USER_IDENTITY_COOKIE="stardock_user"
 # XXX: Legacy Support
 export USER_IDENTITY_COOKIE="starphleet_user"
-
 
 export STARDOCK_AUTHENTIC_TOKEN="CHANGEME"
 
