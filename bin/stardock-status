@@ -72,7 +72,7 @@ EOF
     fi
 
     # This grabs the container NGINX is currently configured to point to which
-    # is not always the same is what starphleet thinks is the latest container
+    # is not always the same is what stardock thinks is the latest container
     if is_container_storage_on_s3 \
        && [ -z "${SERVE_CONTAINERS}" ]; then
        unset NGINX_POINTING_AT
