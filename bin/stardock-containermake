@@ -115,9 +115,12 @@ if [ -z "${SERVE_CONTAINERS}" ] \
     docker_exec "mkdir -p /home/${STARDOCK_APP_USER}/.ssh"
     docker_exec "echo -e '${STARDOCK_APP_USER} ALL=NOPASSWD:ALL' >> /etc/sudoers"
 
+    # TODO: Container overlay (so syslog goes to localhost)
+
+    info "containermake|default_package_list:${CONTAINER_NAME}"
     docker_exec "apt-get update -y"
     docker_exec 'DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --force-yes'
-    docker_exec 'apt-get -y install --force-yes $(< '"${STARDOCK_BIN}/packages"')'
+    docker_exec 'apt-get -y install --force-yes $(< '"${STARDOCK_BIN}/stardock-packages-list"')'
   else
     # Get the IP to the Docker Bridge
     docker create -it \
