@@ -9,19 +9,28 @@ source "$DIR/stardock-launcher"
 
 die_on_error
 
-# sudo apt-get -y update
-# sudo apt-get install -y --force-yes $(cat << FFF
-# python-dev
-# python-docutils
-# python-pip
-# FFF
-# )
 pushd "${STARDOCK_ROOT}/nginx" > /dev/null
-cp -R "${STARDOCK_OVERLAY_NGINX}"/* "${STARDOCK_NGINX_RUNTIME}/"
-make
-cp nginx "${STARDOCK_NGINX_BIN}"
-chmod 755 "${STARDOCK_NGINX_BIN}"
+if [ -n "${STARDOCK_NGINX_RUNTIME}" ] \
+&& [ -n "${STARDOCK_OVERLAY_NGINX}" ] \
+&& [ ! -f "${STARDOCK_NGINX_BIN}" ]; then
+  # We want to purge the existance of a previous runtime in case something
+  # changed.  Any time we get a new container we should get a new runtime
+  # dir and blow away the cache
+  [ -d "${STARDOCK_NGINX_RUNTIME}" ] && rm -rf "${STARDOCK_NGINX_RUNTIME}"/*
+  # This installs the barebones overlay that contains
+  # approximately the minimum for stardock to run NGINX
+  cp -R "${STARDOCK_OVERLAY_NGINX}"/* "${STARDOCK_NGINX_RUNTIME}/"
+  # The Makefile in the "${STARDOCK_ROOT}/nginx" directory
+  # contains most the context about what we compile and how
+  # so we are just doing that work inside a container
+  make
+
+  # Emit something friendly about whether we resulted with
+  # an NGINX binary
+  [ -f "./nginx" ] \
+    && info "scripts_nginx:success" \
+    || fatal "scripts_nginx:fail"
+fi
 popd > /dev/null
 
 # Since we are set -e we won't see this in the log unless things work out
-info "scripts_nginx:success"

@@ -1,24 +1,24 @@
 #! /usr/bin/env bash
 # vim:ft=sh
-set -x
 export SCRIPT_DIR="${DIR}"
-export COMMAND_PATH="${DIR}/$(basename $0)"
+export COMMAND_PATH="$0"
 
 # we want our 'globals' to get loaded, and all be exported for use
 # in our called script
 set -a
-source ${DIR}/stardock-common
+source "${DIR}/stardock-common"
 guards
 set +a
 
 trace "${COMMAND_PATH} $@"
 
 # handle our docopt validation
+[ -f "${COMMAND_PATH}" ] || exit 0
 help="$(grep "^### " "${COMMAND_PATH}" | cut -c 5-)"
 # again, we want whatever comes out of docopt to be exported
 
 if [ -n "${help}" ]; then
   set -a
-  eval "$(${DIR}/docopts -h "$help" : "$@")"
+  eval "$(${STARDOCK_BIN}/docopts -h "$help" : "$@")"
   set +a
 fi
