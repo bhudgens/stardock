@@ -10,8 +10,8 @@ export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
 # Kill any dangling/orphaned images
-ORPHANED_IMAGES=$(sudo docker images -f "dangling=true" -q)
-[ -n "${ORPHANED_IMAGES}" ] && docker rmi $ORPHANED_IMAGES 
+ORPHANED_IMAGES=$(docker images -f "dangling=true" -q)
+[ -n "${ORPHANED_IMAGES}" ] && docker rmi $ORPHANED_IMAGES
 
 # Kill any container with this name
 for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep ",${container_name}$"); do

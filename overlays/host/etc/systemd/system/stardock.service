@@ -3,7 +3,7 @@ Description=Stardock
 
 [Service]
 WorkingDirectory=/var/stardock
-ExecStart=/var/stardock/bin/stardock
+ExecStart=/bin/bash -c "/var/stardock/bin/stardock"
 Restart=always
 
 [Install]
