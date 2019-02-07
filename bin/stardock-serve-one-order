@@ -129,8 +129,9 @@ if [ -n "${DEPLOY_REASON}" ]; then
 
   info "serve-one-order|starting:${ORDER}|container:${CONTAINER_NAME}"
   if [ -n "${wait}" ]; then
-    parallel --will-cite --ungroup --semaphore --semaphorename stardock-serve-one-order --jobs ${MAX_CONCURRENT_CONTAINER_BUILDS:-25} "${STARDOCK_BIN}/stardock-init-serve-order" "${CONTAINER_NAME}" "${ORDER}"
+    parallel --will-cite --ungroup --semaphore --semaphorename stardock-serve-one-order --jobs ${MAX_CONCURRENT_CONTAINER_BUILDS:-25} "${STARDOCK_BIN}/stardock-init-serve-order" "${CONTAINER_NAME}" "${ORDER}" \
+      > "${STARDOCK_LOGS}/${CONTAINER_NAME}.build.log" 2>&1
   else
-    "${STARDOCK_BIN}/stardock-init-serve-order" "${CONTAINER_NAME}" "${ORDER}" &
+    "${STARDOCK_BIN}/stardock-init-serve-order" "${CONTAINER_NAME}" "${ORDER}"
   fi
 fi
