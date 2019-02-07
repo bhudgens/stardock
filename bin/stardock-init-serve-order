@@ -15,212 +15,241 @@ run_as_root_or_die
 ##########################################################################
 ## Pre-Start - Setup and Build the Container
 ##########################################################################
-info "init-serve-order|building:${name}"
+function pre_start() {
+  info "init-serve-order|building:${name}"
 
-ORDER_LOCAL="${HEADQUARTERS_LOCAL}/${order}/git"
-STATUS_FILE="${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"
+  ORDER_LOCAL="${HEADQUARTERS_LOCAL}/${order}/git"
+  STATUS_FILE="${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"
 
-run_orders "${HEADQUARTERS_LOCAL}/${order}/orders"
+  run_orders "${HEADQUARTERS_LOCAL}/${order}/orders"
 
-#pre stop if the service demands it
-if [ "${STOP_BEFORE_AUTODEPLOY}" == "1" ]; then
-  info stopping before autodeploy
-  starphleet-reaper "${name}" "${order}" --force
-fi
+  #pre stop if the service demands it
+  if [ "${STOP_BEFORE_AUTODEPLOY}" == "1" ]; then
+    info stopping before autodeploy
+    starphleet-reaper "${name}" "${order}" --force
+  fi
 
-LAST_KNOWN_GOOD_CONTAINER=$(cat "${CURRENT_ORDERS}/${order}/.last_known_good_container" || true)
-# this will give us the container name of the LKG ONLY IF the system has the
-# container
-DO_WE_HAVE_THE_LKG=$(docker container ls -a --format '{{.Image}}' | grep "^${LAST_KNOWN_GOOD_CONTAINER}$" || true)
+  LAST_KNOWN_GOOD_CONTAINER=$(cat "${CURRENT_ORDERS}/${order}/.last_known_good_container" || true)
+  # this will give us the container name of the LKG ONLY IF the system has the
+  # container
+  DO_WE_HAVE_THE_LKG=$(docker image ls -a --format '{{.Repository}},{{.Tag}}' | egrep "${STARDOCK_BASE},${LAST_KNOWN_GOOD_CONTAINER}$" || true)
 
-# this 'use existing container' step is simply for optimizing restart of the
-# LAST container we used, so we check to see if we're being asked to use the
-# LKG and that we do indeed HAVE the LKG
-if [ "${name}" == "${LAST_KNOWN_GOOD_CONTAINER}" -a "${name}" == "${DO_WE_HAVE_THE_LKG}" ]; then
-  warn "init-serve-order|existing_container:${name}"
-  # TODO: Implement a LKG / Docker style
-  # warn "using existing container ${name}"
-  # lxc-start --name ${name} -d
-  # starphleet-lxc-wait ${name} RUNNING
-  # lxc-attach --name ${name} -- bash starphleet-wait-network
-  # if dev_mode && [ -n "${DEVMODE_UNBIND_GIT_DIR}" ]; then
-  #   lxc-attach --name ${name} -- sudo -H -u ${STARPHLEET_APP_USER} bash -c "rsync -rlKt '${ORDER_LOCAL}/' '/home/ubuntu/app/'"
-  #   lxc-attach --name ${name} -- sudo -H -u ${STARPHLEET_APP_USER} bash -c "[ -f '${DEVMODE_BUILD_CACHE}' ] && rsync -rav --exclude-from='${DEVMODE_BUILD_CACHE}' --delete '${ORDER_LOCAL}/' '/home/ubuntu/app/'"
-  # fi
-  :
-else
-  warn "init-serve-order|new_container:${name}"
-  # Statuses are used as state in various places
-  echo 'building' > "${STATUS_FILE}"
+  # this 'use existing container' step is simply for optimizing restart of the
+  # LAST container we used, so we check to see if we're being asked to use the
+  # LKG and that we do indeed HAVE the LKG
+  if [ "${name}" == "${LAST_KNOWN_GOOD_CONTAINER}" -a -n "${DO_WE_HAVE_THE_LKG}" ]; then
+    warn "init-serve-order|existing_container:${name}"
+    # TODO: Implement a LKG / Docker style
+    # warn "using existing container ${name}"
+    # lxc-start --name ${name} -d
+    # starphleet-lxc-wait ${name} RUNNING
+    # lxc-attach --name ${name} -- bash starphleet-wait-network
+    # if dev_mode && [ -n "${DEVMODE_UNBIND_GIT_DIR}" ]; then
+    #   lxc-attach --name ${name} -- sudo -H -u ${STARPHLEET_APP_USER} bash -c "rsync -rlKt '${ORDER_LOCAL}/' '/home/ubuntu/app/'"
+    #   lxc-attach --name ${name} -- sudo -H -u ${STARPHLEET_APP_USER} bash -c "[ -f '${DEVMODE_BUILD_CACHE}' ] && rsync -rav --exclude-from='${DEVMODE_BUILD_CACHE}' --delete '${ORDER_LOCAL}/' '/home/ubuntu/app/'"
+    # fi
+    :
+  else
+    warn "init-serve-order|new_container:${name}"
+    # Statuses are used as state in various places
+    echo 'building' > "${STATUS_FILE}"
 
-  # We should destroy any existing images
-  "${DIR}/stardock-docker-image-destroy" "${name}"
-  "${DIR}/stardock-containerize" "${SERVICE_GIT_URL:--}" "${name}" "${HEADQUARTERS_LOCAL}/${order}"
+    # We should destroy any existing images
+    "${DIR}/stardock-docker-image-destroy" "${name}"
+    "${DIR}/stardock-containerize" "${SERVICE_GIT_URL:--}" "${name}" "${HEADQUARTERS_LOCAL}/${order}"
 
-  # TODO: Figure out container storage in the cloud later
-  # CONTAINERIZE_EXIT_CODE=$?
-  # If we are a serve-only server, it's possible containermake will fail
-  # because the container does not yet exist in S3.  We want to keep trying
-  # to get it indefinitely.
-  # if is_container_storage_on_s3 \
-  # && [ -z "${BUILD_CONTAINERS}" ] \
-  # && [ -n "${SERVE_CONTAINERS}" ] \
-  # && [ ${CONTAINERIZE_EXIT_CODE} -eq ${EXIT_CODE_FOR_FAILED_S3_DOWNLOADS} ]; then
-  #   info 'Failed due to container not existing in S3 - Trying again'
-  #   echo 'building failed' > "${STATUS_FILE}"
-  #   # Least fancy way to trigger a full rebuild but still let us punt on
-  #   # the pre-start instead of having to send signals further down the
-  #   # upstart chain.  By removing the orders sha we can totally exit out
-  #   # and monitor_orders will start us back up next cycle
-  #   rm "${CURRENT_ORDERS}/${order}/.orders_sha"
-  #   exit 1
-  # fi
+    # TODO: Figure out container storage in the cloud later
+    # CONTAINERIZE_EXIT_CODE=$?
+    # If we are a serve-only server, it's possible containermake will fail
+    # because the container does not yet exist in S3.  We want to keep trying
+    # to get it indefinitely.
+    # if is_container_storage_on_s3 \
+    # && [ -z "${BUILD_CONTAINERS}" ] \
+    # && [ -n "${SERVE_CONTAINERS}" ] \
+    # && [ ${CONTAINERIZE_EXIT_CODE} -eq ${EXIT_CODE_FOR_FAILED_S3_DOWNLOADS} ]; then
+    #   info 'Failed due to container not existing in S3 - Trying again'
+    #   echo 'building failed' > "${STATUS_FILE}"
+    #   # Least fancy way to trigger a full rebuild but still let us punt on
+    #   # the pre-start instead of having to send signals further down the
+    #   # upstart chain.  By removing the orders sha we can totally exit out
+    #   # and monitor_orders will start us back up next cycle
+    #   rm "${CURRENT_ORDERS}/${order}/.orders_sha"
+    #   exit 1
+    # fi
 
-  # TODO: Figure out container storage in the cloud later
-  # Container Failed to Build on Build Server?
-  # if is_container_storage_on_s3 \
-  # && [ -n "${BUILD_CONTAINERS}" ] \
-  # && [ ${CONTAINERIZE_EXIT_CODE} -gt 0 ]; then
-  #   info 'Container Failed To Build'
-  #   echo 'building failed' > "${STATUS_FILE}"
-  #   mail_log
-  #   exit 1
-  # fi
-fi
+    # TODO: Figure out container storage in the cloud later
+    # Container Failed to Build on Build Server?
+    # if is_container_storage_on_s3 \
+    # && [ -n "${BUILD_CONTAINERS}" ] \
+    # && [ ${CONTAINERIZE_EXIT_CODE} -gt 0 ]; then
+    #   info 'Container Failed To Build'
+    #   echo 'building failed' > "${STATUS_FILE}"
+    #   mail_log
+    #   exit 1
+    # fi
+  fi
+}
 
 ##########################################################################
 ## Start - Start the above container
 ##########################################################################
-info "Starting ${name}"
+info "init-serve-order|starting:${name}"
 
 function docker_run() {
   # We are not destroying the image we just made - only the container
   # so we can get a clean start with the image
-  "${DIR}/stardock-docker-container-destroy" "${name}"
-  DOCKER_ID=$(eval docker run -d \
+  "${DIR}/stardock-docker-container-destroy" "${name}" || true
+  docker run \
+    --rm \
     --network "${STARDOCK_NETWORK_NAME}" \
     --name "${name}" \
-    "${name}" sudo -E -H -u "${STARDOCK_APP_USER}" "$@")
+    --env-file <( env | cut -f1 -d= )
+    "${STARDOCK_BASE}:${name}" sudo -E -H -u "${STARDOCK_APP_USER}" $@ &
+
+  MY_DOCKER_CHILD=$!
 }
 
-if [ "${UNPUBLISHED}" == "1" ]; then
-  docker_run "sudo -H -u ${STARDOCK_APP_USER} bash -c '2>&1 sleep 100000000' | logger -t '${order}'" || mail_log &
-else
-  docker_run "/home/ubuntu/start web"
-fi
+function start() {
+  if [ "${UNPUBLISHED}" == "1" ]; then
+    docker_run "sleep infinity"
+  else
+    docker_run "/home/ubuntu/start web"
+  fi
+}
 
-# echo 'stopped' > "${STATUS_FILE}"
+##########################################################################
+## Post-Start - Start the above container
+##########################################################################
+function post_start() {
+  info "init-serve-order|healthcheck:${name}"
 
-info "Checking ${name}"
+  # Since we start the process in the background it can take a few
+  # seconds to get going.  Give it a couple secs to start
+  sleep 2
 
-# Make sure we don't have any settings from previous orders
-unset HEALTHCHECK
+  # Deploy all the things
+  if [ "${UNPUBLISHED}" == "1" ]; then
+    # starphleet-s3-put-container ${name}
 
-# Deploy all the things
-if [ "${UNPUBLISHED}" == "1" ]; then
-  # starphleet-s3-put-container ${name}
+    # It is important for the active container to still get set above
+    # so that the reaper won't leave around stale containers.  We
+    # now check if this is a build_only server and if yes we will
+    # stop running the container and exit cleanly
+    # if is_container_storage_on_s3 && [ -z "${SERVE_CONTAINERS}" ]; then
+    #   info "Build Only Server - Stopping: ${name}"
+    #   echo 'build server' > "${STATUS_FILE}"
+    #   { stop ; exit 0; }
+    # fi
 
-  # It is important for the active container to still get set above
-  # so that the reaper won't leave around stale containers.  We
-  # now check if this is a build_only server and if yes we will
-  # stop running the container and exit cleanly
-  # if is_container_storage_on_s3 && [ -z "${SERVE_CONTAINERS}" ]; then
-  #   info "Build Only Server - Stopping: ${name}"
-  #   echo 'build server' > "${STATUS_FILE}"
-  #   { stop ; exit 0; }
-  # fi
+    # At this point the container is active so make it the current container
+    echo "${name}" > "${CURRENT_ORDERS}/${order}/.container"
+    echo 'online' > "${STATUS_FILE}"
+    # TODO:
+    # Do we still want to use this?  maybe?  If yes, docker has
+    # a built in expose we can use
+    # stardock-expose "${name}" "${HEADQUARTERS_LOCAL}/${order}/orders"
+    stardock-reaper "${name}" "${order}" --force
 
-  # At this point the container is active so make it the current container
-  echo "${name}" > "${CURRENT_ORDERS}/${order}/.container"
-  echo 'online' > "${STATUS_FILE}"
-  # TODO:
-  # Do we still want to use this?  maybe?  If yes, docker has
-  # a built in expose we can use
-  # stardock-expose "${name}" "${HEADQUARTERS_LOCAL}/${order}/orders"
-  stardock-reaper "${name}" "${order}" --force
+  else
+    echo 'checking' > "${STATUS_FILE}"
+    echo "${PORT}" > "${STATUS_FILE}.port"
 
-else
-  echo 'checking' > "${STATUS_FILE}"
+    ######################
+    # Healthchecks
+    ######################
+    # TODO: We have to deal with Healthchecks
+    # Give the service a chance to light up
+    if [ -n "${HEALTHCHECK}" ]; then
+      # Allow for orders to configure the delay
+      HEALTHCHECK_INIT_DELAY=${HEALTHCHECK_INIT_DELAY:-180}
+      # Keep looping on the service until it responds with a success, or
+      # eventually punt after some delay and give up
+      info "Testing health of container ${name}"
+      for ((c=0; c<=HEALTHCHECK_INIT_DELAY; c++)); do
+        # If we get a successful healthcheck
+        info "Attempt $c of ${HEALTHCHECK_INIT_DELAY}"
+        if "${DIR}/stardock-healthcheck" "${name}" "${order}" "${HEALTHCHECK}" ; then
+          break
+        fi
+        if [ "$c" -eq "${HEALTHCHECK_INIT_DELAY}" ]; then
+          # At this point the service has failed to properly start
+          warn Service failed to publish "${order}" for container ${name}
+          echo 'failed' > "${STATUS_FILE}"
+          # rm "${LAST_KNOWN_GOOD_CONTAINER}"
+          # TODO: Cloud storage
+          # if is_container_storage_on_s3; then
+          #   if [ -n "${BUILD_CONTAINERS}" ] && [ -z "${SERVE_CONTAINERS}" ]; then
+          #     mail_log
+          #   fi
+          # else
+          # mail_log
+          # fi
+          exit 1
+        fi
+        sleep 1
+      done
+    fi
 
-  ######################
-  # Healthchecks
-  ######################
-  # TODO: We have to deal with Healthchecks
-  # Give the service a chance to light up
-  # if [ -n "${HEALTHCHECK}" ]; then
-  #   # Allow for orders to configure the delay
-  #   HEALTHCHECK_INIT_DELAY=${HEALTHCHECK_INIT_DELAY:-180}
-  #   # Keep looping on the service until it responds with a success, or
-  #   # eventually punt after some delay and give up
-  #   info "Testing health of container ${name}"
-  #   for ((c=0; c<=HEALTHCHECK_INIT_DELAY; c++)); do
-  #     # If we get a successful healthcheck
-  #     info "Attempt $c of ${HEALTHCHECK_INIT_DELAY}"
-  #     if stardock-healthcheck "${name}" "${order}" "${HEALTHCHECK}" ; then
-  #       # Logs are redunant ish but help quickly see what happened when
-  #       # reviewing logs on the command line
-  #       info Healthcheck passed for container ${name}
-  #       if ! is_container_storage_on_s3 \
-  #         || (is_container_storage_on_s3 && [ -n "${SERVE_CONTAINERS}" ]); then
-  #         # Here we start a upstart 'watchdog' for services that have
-  #         # a healthcheck
-  #         start --no-wait starphleet_orders_healthcheck name="${name}" order="${order}"
-  #         info "Started healthchecker for ${order} on container ${name}"
-  #
-  #       fi
-  #       # Dump out of our check loop
-  #       break
-  #     fi
-  #     if [ "$c" -eq "${HEALTHCHECK_INIT_DELAY}" ]; then
-  #       # At this point the service has failed to properly start
-  #       warn Service failed to publish "${order}" for container ${name}
-  #       echo 'failed' > "${STATUS_FILE}"
-  #       rm "${LAST_KNOWN_GOOD_CONTAINER}"
-  #       # TODO: Cloud storage
-  #       # if is_container_storage_on_s3; then
-  #       #   if [ -n "${BUILD_CONTAINERS}" ] && [ -z "${SERVE_CONTAINERS}" ]; then
-  #       #     mail_log
-  #       #   fi
-  #       # else
-  #       mail_log
-  #       # fi
-  #       exit 1
-  #     fi
-  #     sleep 1
-  #   done
-  # fi
+    # TODO: Worry about cloud storage
+    # starphleet-s3-put-container ${name}
 
-  # TODO: Worry about cloud storage
-  # starphleet-s3-put-container ${name}
+    # At this point the container is active so make it the current container
+    echo "${name}" > "${CURRENT_ORDERS}/${order}/.container"
 
-  # At this point the container is active so make it the current container
-  echo "${name}" > "${CURRENT_ORDERS}/${order}/.container"
+    # It is important for the active container to still get set above
+    # so that the reaper won't leave around stale containers.  We
+    # now check if this is a build_only server and if yes we will
+    # stop running the container and exit cleanly
+    # TODO: Moar cloud storage poo
+    # if is_container_storage_on_s3 && [ -z "${SERVE_CONTAINERS}" ]; then
+    #   info "Build Only Server - Stopping: ${name}"
+    #   echo 'build server' > "${STATUS_FILE}"
+    #   { stop ; exit 0; }
+    # fi
 
-  # It is important for the active container to still get set above
-  # so that the reaper won't leave around stale containers.  We
-  # now check if this is a build_only server and if yes we will
-  # stop running the container and exit cleanly
-  # TODO: Moar cloud storage poo
-  # if is_container_storage_on_s3 && [ -z "${SERVE_CONTAINERS}" ]; then
-  #   info "Build Only Server - Stopping: ${name}"
-  #   echo 'build server' > "${STATUS_FILE}"
-  #   { stop ; exit 0; }
-  # fi
+    # Update this containers status with 'online'
 
-  # Update this containers status with 'online'
+    # Announce HUPS in case someone goes crazy
+    echo "HUP_REQUESTED: ${order} ${name}" | logger
 
-  # Announce HUPS in case someone goes crazy
-  echo "HUP_REQUESTED: ${order} ${name}" | logger
-  # Trigger new publish configs and a hup of nginx
-  # stardock-hup-nginx
-  # For good measure
+    # Connect this container to the Docker discovery name
+    docker network disconnect "${STARDOCK_NETWORK_NAME}" "${name}"
+    docker network connect --alias "${order}" "${STARDOCK_NETWORK_NAME}" "${name}"
 
-  echo 'online' > "${STATUS_FILE}"
-  # Don't move on until the container exits
-  while docker container inspect "${DOCKER_ID}" \
-          | jq '.[0].State.Status' \
-          | grep -q running; do
-    sleep "${STARDOCK_PULSE}"
-  done
-  echo 'stopped' > "${STATUS_FILE}"
-fi
+    # Trigger new publish configs and a hup of nginx
+    "${DIR}/stardock-hup-nginx"
+
+    echo 'online' > "${STATUS_FILE}"
+    announce "init-serve-order|online:${name}"
+
+    # Don't move on until the container exits
+    # while [ 1 ]; do
+    #   if ! docker container inspect "${DOCKER_ID}" \
+    #         | jq '.[0].State.Status' \
+    #         | grep -q running; then
+    #     echo 'stopped' > "${STATUS_FILE}"
+    #     break
+    #   fi
+    #   sleep "${STARDOCK_PULSE}"
+    # done &
+  fi
+}
+
+# This runs everything the first time
+pre_start
+start
+post_start
+
+# This is the watch dog that runs in the background and keeps our
+# docker container running full time
+while [ 1 ]; do
+  if [ -z "${MY_DOCKER_CHILD}" ] || [ ! -e "/proc/${MY_DOCKER_CHILD}" ]; then
+    echo 'stopped' > "${STATUS_FILE}"
+    pre_start
+    start
+    post_start
+  fi
+  sleep "${STARDOCK_PULSE}"
+done &
+
+exit 0
