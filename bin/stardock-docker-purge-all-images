@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# vim:syn=sh
+### Usage:
+###    stardock-docker-purge-all-images
+### --help
+###
+### This will stay persistent as long as the container stays running.  We'll
+### run the full lifecycle of the container from here.
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+docker stop $(docker container ls -q -a)
+docker rm $(docker container ls -q -a)
+docker rmi $(docker images -q) -f
