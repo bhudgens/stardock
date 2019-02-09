@@ -72,7 +72,7 @@ info "containermake|building:${CONTAINER_NAME}"
 info "containermake|base_container:${CONTAINER_NAME}"
 "${DIR}/stardock-docker-container-destroy" "${CONTAINER_NAME}"
 # Get the IP to the Docker Bridge
-docker create -it \
+docker create -i \
  -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
  --add-host="localship:${BRIDGE_IP}" \
  --name "${CONTAINER_NAME}" ${CONTAINER_NAME}:latest

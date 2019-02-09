@@ -34,7 +34,7 @@ flock 200
 
 function docker_exec() {
   docker start "${container_name}" > /dev/null \
-  && docker exec \
+  && docker exec -i \
     "${container_name}" /bin/bash -c "$@"
 }
 
@@ -77,7 +77,7 @@ if [ -z "${SERVE_CONTAINERS}" ] \
 
     info "containermake|base_container:${CONTAINER_NAME}"
     # Get the IP to the Docker Bridge
-    docker create -it \
+    docker create -i \
      -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
      --add-host="localship:${BRIDGE_IP}" \
      --name "${CONTAINER_NAME}" ubuntu:trusty
@@ -123,7 +123,7 @@ if [ -z "${SERVE_CONTAINERS}" ] \
     docker_exec 'apt-get -y install --force-yes $(< '"${STARDOCK_BIN}/stardock-packages-list"')'
   else
     # Get the IP to the Docker Bridge
-    docker create -it \
+    docker create -i \
      -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
      --add-host="localship:${BRIDGE_IP}" \
      --name "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${base_container_name}"
