@@ -46,7 +46,7 @@ export STARDOCK_NGINX_BIN="${STARDOCK_ROOT}/nginx/nginx"
 export STARDOCK_NGINX_DNS_CACHE_TIMEOUT=5
 
 # Things in our cache
-export STARDOCK_PRIVATE_KEY="${STARDOCK_KEY}/.private.key}"
+export STARDOCK_PRIVATE_KEY="${STARDOCK_KEY}/.private.key"
 export NGINX_CONF="${STARDOCK_CACHE}/nginx"
 export LOCAL_ENVIRONMENT="${LOCAL_ENVIRONMENT:-${STARDOCK_CACHE}/local_configs}"
 export BUILDPACKS="${STARDOCK_CACHE}/buildpacks"
