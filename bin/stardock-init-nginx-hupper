@@ -125,7 +125,7 @@ while [ 1 ]; do
         -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
         --network "${STARDOCK_NETWORK_NAME}" \
         --name "${CONFIG_TEST_CONTAINER_NAME}" \
-        "${STARDOCK_NGINX_CONTAINER}" "$@"
+        "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}" "$@"
     }
 
     if [ -z "${ERROR}" ] \
