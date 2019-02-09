@@ -14,7 +14,7 @@ function buildpack_urls() {
 cat << EOF
 https://github.com/igroff/heroku-buildpack-ruby.git#starphleet
 https://github.com/igroff/heroku-buildpack-python.git#starphleet
-https://github.com/igroff/heroku-buildpack-nodejs.git#starphleet
+https://github.com/bhudgens/heroku-buildpack-nodejs.git#stardock
 https://github.com/wballard/nginx-buildpack.git
 EOF
 }
