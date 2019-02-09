@@ -11,13 +11,19 @@ source "$DIR/stardock-launcher"
 run_as_root_or_die
 
 ###################################################################
+## Make required dirs
+###################################################################
+mkdir -p "${STARDOCK_LOGS}"
+mkdir -p "${CURRENT_ORDERS}"
+
+###################################################################
 ## List of init jobs we should run
 ###################################################################
 INITS=${INITS:-"
-  ${DIR}/stardock-init-monitor-headquarters
   ${DIR}/stardock-init-monitor-repos
   ${DIR}/stardock-init-nginx
   ${DIR}/stardock-init-nginx-hupper
+  ${DIR}/stardock-init-monitor-headquarters
   ${DIR}/stardock-init-reaper
 "}
 
