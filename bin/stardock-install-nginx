@@ -11,7 +11,7 @@ die_on_error
 
 function docker_exec() {
   docker start "${STARDOCK_NGINX_CONTAINER}" > /dev/null \
-  && docker exec -it \
+  && docker exec \
     "${STARDOCK_NGINX_CONTAINER}" /bin/bash -c "$@"
 }
 
@@ -24,7 +24,7 @@ function docker_cp() {
 }
 
 function docker_create() {
-  docker create -it \
+  docker create \
    -v "${STARDOCK_LOGS}":"/var/log/docker" \
    -v "${STARDOCK_NGINX_RUNTIME}":"${STARDOCK_NGINX_RUNTIME}" \
    -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
