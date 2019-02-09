@@ -480,8 +480,8 @@ if [ -d /etc/starphleet.d ]; then
   done
 fi
 
-if [ -d "${STARDOCK_RUN}/config" ]; then
-  for env_file in "${STARDOCK_RUN}"/config/*
+if [ -d "${STARDOCK_CONFIG}" ]; then
+  for env_file in "${STARDOCK_CONFIG}/"*
   do
     test -f "${env_file}" && source "${env_file}"
   done
