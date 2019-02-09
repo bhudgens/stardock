@@ -47,7 +47,7 @@ function docker_cp() {
   fi
 }
 
-if docker images -a | egrep "^${container_name}$" > /dev/null; then
+if docker images -a --format '{{.Tag}}' | egrep "^${container_name}$" > /dev/null; then
   warn "containermake|exists:${CONTAINER_NAME}"
   exit 0
 fi
