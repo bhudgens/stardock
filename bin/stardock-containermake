@@ -90,7 +90,6 @@ if [ -z "${SERVE_CONTAINERS}" ] \
 
     STARDOCK_FILES_TO_CP="
       ${STARDOCK_OVERLAYS}
-      ${STARDOCK_PRIVATE_KEY}
       ${STARDOCK_ROOT}/.config
       ${STARDOCK_BIN}/stardock-git-config
       ${STARDOCK_BIN}/stardock-git-sync
@@ -134,7 +133,6 @@ if [ -z "${SERVE_CONTAINERS}" ] \
     # start a new container
     STARDOCK_FILES_TO_CP="
       ${STARDOCK_CONFIG}
-      ${STARDOCK_PRIVATE_KEY}
       ${STARDOCK_ROOT}/.config
     "
 
