@@ -86,11 +86,18 @@ for repository_and_tag in $(docker image ls --format '{{.Repository}},{{.Tag}}' 
   "${STARDOCK_BIN}/stardock-docker-image-destroy" "${name}"
 
   info "reaper|purge_status:${name}"
-  rm ${CURRENT_ORDERS}/${order}/.stardockstatus.${name}* || true
+  rm "${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"* || true
+
+  ps auxw \
+    | grep -v grep \
+    | grep -v reaper \
+    | grep stardock-init-serve-order \
+    | grep "${name}" \
+    | awk '{print $2}' \
+    | xargs kill
 
   info "reaper|purge_logs:${name}"
-  rm /var/log/upstart/starphleet_serve_order-${name}* || true
-  rm /var/log/upstart/starphleet_orders_healthcheck-${name}* || true
+  rm "${STARDOCK_LOGS}/${name}.build.*"
 
   info "reaper|complete:${name}"
 done
