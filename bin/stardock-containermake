@@ -131,6 +131,7 @@ if [ -z "${SERVE_CONTAINERS}" ] \
     # These are files we'll want to refresh every time we
     # start a new container
     STARDOCK_FILES_TO_CP="
+      ${STARDOCK_CONFIG}
       ${STARDOCK_PRIVATE_KEY}
       ${STARDOCK_ROOT}/.config
     "
