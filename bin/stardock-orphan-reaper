@@ -35,7 +35,7 @@ for repo_and_tag in $(docker image ls --format '{{.Repository}}:{{.Tag}}' | egre
   [ -z "${SERVICE}" ] && continue
   # If no orders correspond with the service - reap it
   if [ ! -f "${HEADQUARTERS_LOCAL}/${SERVICE}/orders" ]; then
-    "${STARDOCK_BIN}/starphleet-reaper" zzzzzzzzz "${SERVICE}" --force
+    "${STARDOCK_BIN}/stardock-reaper" zzzzzzzzz "${SERVICE}" --force
     [ -d "${HEADQUARTERS_LOCAL}/${SERVICE}" ] && rm -rf "${HEADQUARTERS_LOCAL}/${SERVICE}"
     [ -d "${CURRENT_ORDERS}/${SERVICE}" ] && rm -rf "${CURRENT_ORDERS}/${SERVICE}"
   fi
