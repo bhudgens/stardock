@@ -75,7 +75,7 @@ info "containermake|base_container:${CONTAINER_NAME}"
 docker create -i \
  -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
  --add-host="localship:${BRIDGE_IP}" \
- --name "${CONTAINER_NAME}" ${CONTAINER_NAME}:latest
+ --name "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${CONTAINER_NAME}"
 
 docker_exec "mkdir -p ${STARDOCK_ROOT}"
 docker_exec "mkdir -p ${STARDOCK_BIN}"

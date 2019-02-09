@@ -23,7 +23,7 @@ function docker_run() {
     -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
     --network "${STARDOCK_NETWORK_NAME}" \
     --name "${STARDOCK_NGINX_CONTAINER}" \
-    "${STARDOCK_NGINX_CONTAINER}" "$@"
+    "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}" "$@"
 }
 
 trap "{ exit 0; }" SIGTERM EXIT
