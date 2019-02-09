@@ -28,6 +28,7 @@ function docker_run() {
 
 trap "{ exit 0; }" SIGTERM EXIT
 
+"${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
 while [ 1 ]; do
   docker_run ${STARDOCK_NGINX_BIN} -p "${STARDOCK_NGINX_RUNTIME}" -c "${STARDOCK_NGINX_CONF}"
 done
