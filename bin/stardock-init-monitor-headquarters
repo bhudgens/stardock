@@ -22,6 +22,7 @@ source "$DIR/stardock-launcher"
 # the proxy to our services
 #####################################################################
 while [ 1 ]; do
+  source "${DIR}/stardock-common"
   if [ -n "${HEADQUARTERS_REMOTE}" ]; then
     if "${DIR}/stardock-git-sync" "${HEADQUARTERS_REMOTE}" "${HEADQUARTERS_LOCAL}"; then
       # XXX: Backwards compatability
