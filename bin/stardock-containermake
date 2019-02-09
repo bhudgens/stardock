@@ -126,7 +126,7 @@ if [ -z "${SERVE_CONTAINERS}" ] \
     docker create -it \
      -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
      --add-host="localship:${BRIDGE_IP}" \
-     --name "${CONTAINER_NAME}" ${base_container_name}:latest
+     --name "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${base_container_name}"
 
     # These are files we'll want to refresh every time we
     # start a new container
@@ -177,7 +177,6 @@ if [ -z "${SERVE_CONTAINERS}" ] \
   # docker_exec "rm -rf '/etc/starphleet.d'"
   # docker_cp /etc/starphleet.d /etc/starphleet.d
 
-  #host file updates
   info "containermake|user_setup:${CONTAINER_NAME}"
   docker_exec "mkdir -p /home/${STARDOCK_APP_USER}/build"
   docker_cp "${BUILDPACKS}" "/home/${STARDOCK_APP_USER}/build"
