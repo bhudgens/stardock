@@ -22,6 +22,7 @@ export STARDOCK_OVERLAY_CONTAINER="${STARDOCK_OVERLAYS}/containers"
 
 # Things that are runtime files
 export STARDOCK_LOGS="${STARDOCK_RUN}/logs"
+export STARDOCK_CONFIG="${STARDOCK_RUN}/config"
 export HEADQUARTERS_SOURCE="${STARDOCK_RUN}/.headquarters"
 export HEADQUARTERS_LOCAL="${HEADQUARTERS_LOCAL:-${STARDOCK_RUN}/headquarters}"
 export CURRENT_ORDERS="${STARDOCK_RUN}/current_orders"
