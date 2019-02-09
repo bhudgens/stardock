@@ -14,6 +14,7 @@ run_as_root_or_die
 ## Make required dirs
 ###################################################################
 mkdir -p "${STARDOCK_LOGS}"
+mkdir -p "${STARDOCK_KEY}"
 mkdir -p "${CURRENT_ORDERS}"
 
 ###################################################################

@@ -3,6 +3,7 @@
 export SCRIPT_DIR="${DIR}"
 export COMMAND_PATH="$0"
 
+
 # we want our 'globals' to get loaded, and all be exported for use
 # in our called script
 set -a
