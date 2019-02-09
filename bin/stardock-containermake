@@ -293,7 +293,10 @@ fi
   # fi
   # sudo -E -H -u "${STARDOCK_APP_USER}"
 
-DOCKER_CMD='CMD ["sudo","-E","-u","'"${STARDOCK_APP_USER}"'","/home/ubuntu/start","web"]'
+[ -n "${base_container_name}" ] \
+  && DOCKER_CMD='CMD ["sudo","-E","-u","'"${STARDOCK_APP_USER}"'","/home/ubuntu/start","web"]' \
+  || DOCKER_CMD='CMD ["/bin/bash"]'
+
 docker commit \
   --change "${DOCKER_CMD}" \
   -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
