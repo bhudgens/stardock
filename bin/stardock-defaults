@@ -30,6 +30,8 @@ export STARDOCK_NETWORK_NAME="stardock"
 export STARDOCK_NETWORK_CIDR="10.0.0.0/16"
 export STARDOCK_NETWORK_GW="10.0.0.1"
 
+export STARDOCK_REPOSITORY="stardock"
+
 # Support default set elsewhere
 export HEADQUARTERS_ENV="${HEADQUARTERS_ENV:-${HEADQUARTERS_LOCAL}/.stardock}"
 

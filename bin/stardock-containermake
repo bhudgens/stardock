@@ -209,6 +209,10 @@ if [ -z "${SERVE_CONTAINERS}" ] \
   info "containermake|user_dir_permissions:${CONTAINER_NAME}"
   docker_exec "chown -R ${STARDOCK_APP_USER}:${STARDOCK_APP_USER} /home/${STARDOCK_APP_USER}"
 
+  # Make sure cache dir permissions are okay
+  info "containermake|build_script_setup:${CONTAINER_NAME}"
+  docker_exec "[ -d '${STARDOCK_CACHE}' ] && chown '${STARDOCK_APP_USER}:${STARDOCK_APP_USER}' '${STARDOCK_CACHE}'"
+
   #this is the build script for the container itself
   info "containermake|build_script_setup:${CONTAINER_NAME}"
   BUILD_SCRIPT_FULL_PATH="${STARDOCK_BIN}/build_script"
@@ -276,23 +280,32 @@ fi
 
 [ -n "${base_container_name}" ] \
   && IMAGE_NAME="${base_container_name}:${CONTAINER_NAME}" \
-  || IMAGE_NAME="${STARDOCK_BASE}:latest"
+  || IMAGE_NAME="${STARDOCK_REPOSITORY}:${STARDOCK_BASE}"
 
 [ -n "${base_container_name}" ] && [ -n "${order}" ]\
-  && IMAGE_TAG_NAME="${order}" \
+  && IMAGE_TAG_NAME="${CONTAINER_NAME}" \
   || IMAGE_TAG_NAME="${STARDOCK_BASE}"
 
+  # if [ "${UNPUBLISHED}" == "1" ]; then
+  #   docker_run "sleep infinity"
+  # else
+  #   docker_run "/home/ubuntu/start web"
+  # fi
+  # sudo -E -H -u "${STARDOCK_APP_USER}"
+
+DOCKER_CMD='CMD ["sudo","-E","-u","'"${STARDOCK_APP_USER}"'","/home/ubuntu/start","web"]'
 docker commit \
+  --change "${DOCKER_CMD}" \
   -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
-  "${CONTAINER_NAME}" "${IMAGE_NAME}"
+  "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${IMAGE_TAG_NAME}"
 
-docker image tag \
-  "${IMAGE_NAME}" \
-  "services.glgresearch.com:${IMAGE_TAG_NAME}"
 
-docker image tag \
-  "${IMAGE_NAME}" \
-  "${IMAGE_TAG_NAME}:latest"
+# docker image tag \
+#   "${IMAGE_NAME}" \
+#
+# docker image tag \
+#   "${IMAGE_NAME}" \
+#   "${IMAGE_TAG_NAME}:latest"
 
 info "containermake|completed:${CONTAINER_NAME}"
 # Remove lock file to guarantee release

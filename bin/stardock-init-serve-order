@@ -29,10 +29,11 @@ function pre_start() {
     starphleet-reaper "${name}" "${order}" --force
   fi
 
+
   LAST_KNOWN_GOOD_CONTAINER=$(cat "${CURRENT_ORDERS}/${order}/.last_known_good_container" || true)
   # this will give us the container name of the LKG ONLY IF the system has the
   # container
-  DO_WE_HAVE_THE_LKG=$(docker image ls -a --format '{{.Repository}},{{.Tag}}' | egrep "${STARDOCK_BASE},${LAST_KNOWN_GOOD_CONTAINER}$" || true)
+  DO_WE_HAVE_THE_LKG=$(docker image ls -a --format '{{.Repository}}:{{.Tag}}' | egrep "${STARDOCK_REPOSITORY}:${LAST_KNOWN_GOOD_CONTAINER}$" || true)
 
   # this 'use existing container' step is simply for optimizing restart of the
   # LAST container we used, so we check to see if we're being asked to use the
@@ -93,8 +94,6 @@ function pre_start() {
 ##########################################################################
 ## Start - Start the above container
 ##########################################################################
-info "init-serve-order|starting:${name}"
-
 function docker_run() {
   # We are not destroying the image we just made - only the container
   # so we can get a clean start with the image
@@ -103,13 +102,14 @@ function docker_run() {
     --rm \
     --network "${STARDOCK_NETWORK_NAME}" \
     --name "${name}" \
-    --env-file <( env | cut -f1 -d= )
-    "${STARDOCK_BASE}:${name}" sudo -E -H -u "${STARDOCK_APP_USER}" $@ &
+    "${STARDOCK_REPOSITORY}:${name}" & # sudo -E -H -u "${STARDOCK_APP_USER}" $@ &
+    # --env-file <( env | cut -f1 -d= ) \
 
   MY_DOCKER_CHILD=$!
 }
 
 function start() {
+  info "init-serve-order|starting:${name}"
   if [ "${UNPUBLISHED}" == "1" ]; then
     docker_run "sleep infinity"
   else

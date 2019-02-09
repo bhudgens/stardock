@@ -29,10 +29,10 @@ function docker_create() {
    -v "${STARDOCK_NGINX_RUNTIME}":"${STARDOCK_NGINX_RUNTIME}" \
    -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
    --add-host="localship:${BRIDGE_IP}" \
-   --name "${STARDOCK_NGINX_CONTAINER}" ${STARDOCK_BASE}:latest
+   --name "${STARDOCK_NGINX_CONTAINER}" "${STARDOCK_REPOSITORY}:${STARDOCK_BASE}"
 }
 
-if ! docker image ls --format '{{.Repository}},{{.Tag}}' | grep -q "^${STARDOCK_NGINX_CONTAINER},"; then
+if ! docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -q "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}"; then
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
 
   bridge_ip
@@ -58,23 +58,10 @@ if ! docker image ls --format '{{.Repository}},{{.Tag}}' | grep -q "^${STARDOCK_
   docker_exec "chmod +x '${BUILD_SCRIPT_FULL_PATH}'"
   docker_exec "${BUILD_SCRIPT_FULL_PATH}"
 
-
-
-  IMAGE_NAME="${STARDOCK_BASE}:${STARDOCK_NGINX_CONTAINER}"
-  IMAGE_TAG_NAME="${STARDOCK_NGINX_CONTAINER}"
   docker commit \
     -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
-    "${STARDOCK_NGINX_CONTAINER}" "${IMAGE_NAME}"
-
-  docker image tag \
-    "${IMAGE_NAME}" \
-    "services.glgresearch.com:${IMAGE_TAG_NAME}"
-
-  docker image tag \
-    "${IMAGE_NAME}" \
-    "${IMAGE_TAG_NAME}:latest"
+    "${STARDOCK_NGINX_CONTAINER}" "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}"
 
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
-
   info "install-nginx|created_container:${STARDOCK_NGINX_CONTAINER}"
 fi

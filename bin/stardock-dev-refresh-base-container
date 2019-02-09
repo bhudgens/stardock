@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 # vim:syn=sh
 ### Usage:
-###    stardock-dev-refresh-base-container <container_name> <build_script>
+###    stardock-dev-refresh-base-container
 ### --help
 ###
 ### This script is a helper for the dev process to help
 ### refresh the base container without needing to rebuild
 ### the entire thing
+
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
 run_as_root_or_die
 die_on_error
+
+# Since this is a dev command, we are going to make some
+# assumptions
+container_name="${STARDOCK_BASE}"
+build_script="${DIR}/stardock-dev-scripts-base-container"
 
 test -f "${build_script}"
 
@@ -118,15 +124,25 @@ docker_cp "${build_script}" "${BUILD_SCRIPT_FULL_PATH}"
 docker_exec "chmod +x '${BUILD_SCRIPT_FULL_PATH}'"
 docker_exec "sudo -H -u ${STARDOCK_APP_USER} bash -c '${BUILD_SCRIPT_FULL_PATH}'"
 
-# Make our container image
-DATESTAMP="$(date +d%y%m%d-d%H%M%S)"
+[ -n "${base_container_name}" ] \
+  && IMAGE_NAME="${base_container_name}:${CONTAINER_NAME}" \
+  || IMAGE_NAME="${STARDOCK_REPOSITORY}:${STARDOCK_BASE}"
+
+[ -n "${base_container_name}" ] && [ -n "${order}" ]\
+  && IMAGE_TAG_NAME="${order}" \
+  || IMAGE_TAG_NAME="${STARDOCK_BASE}"
+
 docker commit \
   -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
-  "${CONTAINER_NAME}" "${CONTAINER_NAME}:${DATESTAMP}"
+  "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${IMAGE_TAG_NAME}"
 
-docker image tag \
-  "${CONTAINER_NAME}:${DATESTAMP}" \
-  "${CONTAINER_NAME}:latest"
+# docker image tag \
+#   "${IMAGE_NAME}" \
+#   "services.glgresearch.com:${IMAGE_TAG_NAME}"
+
+# docker image tag \
+#   "${IMAGE_NAME}" \
+#   "${IMAGE_TAG_NAME}:latest"
 
 info "containermake|completed:${CONTAINER_NAME}"
 # Remove lock file to guarantee release

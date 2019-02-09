@@ -9,15 +9,16 @@
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
+
+
 # Kill any dangling/orphaned images
 ORPHANED_IMAGES=$(docker images -f "dangling=true" -q)
 [ -n "${ORPHANED_IMAGES}" ] && docker rmi $ORPHANED_IMAGES
 
 # Kill any container with this name
-for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep ",${container_name}$"); do
-  IMAGE_NAME=$(echo $container | cut -f1 -d',')
-  FRIENDLY_NAME=$(echo $container | cut -f2 -d',')
-  docker stop "${FRIENDLY_NAME}" > /dev/null
-  info "docker-container-destroy|killing_container:${FRIENDLY_NAME}"
-  docker rm "${FRIENDLY_NAME}"
+for container in $(docker ps -a --format '{{.Names}}' | egrep "${container_name}$"); do
+  info "docker-container-destroy|stopping_container:${container}"
+  docker stop "${container}" > /dev/null
+  info "docker-container-destroy|removing_container:${container}"
+  docker rm "${container}"
 done
