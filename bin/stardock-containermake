@@ -79,6 +79,7 @@ if [ -z "${SERVE_CONTAINERS}" ] \
     # Get the IP to the Docker Bridge
     docker create -i \
      -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
+     -v "${STARDOCK_RUN}":"${STARDOCK_RUN}" \
      --add-host="localship:${BRIDGE_IP}" \
      --name "${CONTAINER_NAME}" ubuntu:trusty
 
@@ -125,6 +126,7 @@ if [ -z "${SERVE_CONTAINERS}" ] \
     # Get the IP to the Docker Bridge
     docker create -i \
      -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
+     -v "${STARDOCK_RUN}":"${STARDOCK_RUN}" \
      --add-host="localship:${BRIDGE_IP}" \
      --name "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${base_container_name}"
 
