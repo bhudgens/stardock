@@ -23,7 +23,6 @@ while [ 1 ]; do
       SERVICE_NAME=$(echo "${order}" | sed -e 's[/orders$[[' | sed -e "s[${HEADQUARTERS_LOCAL}/\?[[")
       "${DIR}/stardock-serve-one-order" "${SERVICE_NAME}" "wait"
     done
-    trace -----------------------
   fi
   sleep "${STARDOCK_PULSE}"
 done
