@@ -202,9 +202,16 @@ function run_orders()
     }
   fi
 
+  dockerdeploy () {
+    info "common|dockerdeploy:${1}"
+    export STARDOCK_REPOSITORY="$(echo $1 | cut -f1 -d':')"
+    export SERVICE_DOCKER_TAG="$(echo $1 | cut -f2 -d':')"
+  }
+
   autodeploy () {
     info "common|autodeploy:${1}"
-    [ -n "${AUTODEPLOY}" ] && echo "${1}" > "${AUTODEPLOY}"
+    # XXX: I literally can't determine what this is used for?
+    # [ -n "${AUTODEPLOY}" ] && echo "${1}" > "${AUTODEPLOY}"
     SERVICE_GIT_URL="${1}"
   }
 
@@ -215,7 +222,8 @@ function run_orders()
   # If the order is unpublished - push an 'empty' link to ${AUTODEPLOY} so the previous
   # git repo doesn't accidently get re-copied into the wrong order folder
   unpublished () {
-    [ -n "${AUTODEPLOY}" ] && echo "" > "${AUTODEPLOY}"
+    # XXX: I literally can't determine what this is used for?
+    # [ -n "${AUTODEPLOY}" ] && echo "" > "${AUTODEPLOY}"
     UNPUBLISHED=1
   }
 
