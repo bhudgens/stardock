@@ -86,7 +86,13 @@ fi
 LOCAL="${HEADQUARTERS_LOCAL}/${ORDER}/git"
 
 # Git Repo Change
-[ -n "${SERVICE_GIT_URL}" ] && "${DIR}/stardock-git-sync" "${SERVICE_GIT_URL}" "${LOCAL}" && DEPLOY_REASON="Git Repo Changed"
+[ -n "${SERVICE_GIT_URL}" ] \
+  && "${DIR}/stardock-git-sync" "${SERVICE_GIT_URL}" "${LOCAL}" \
+  && DEPLOY_REASON="Git Repo Changed"
+
+[ -n "${SERVICE_DOCKER_TAG}" ] \
+  && "${DIR}/stardock-docker-image-sync" "${STARDOCK_REPOSITORY}" "${SERVICE_DOCKER_TAG}" \
+  && DEPLOY_REASON="Docker Container Changed"
 
 # Allow the command to be told to deploy regardless
 DEPLOY_REASON="${FORCE_DEPLOY_REASON:-$DEPLOY_REASON}"
@@ -103,6 +109,10 @@ if [ -n "${DEPLOY_REASON}" ]; then
   if [ -d "${LOCAL}" ]; then
     get_CURRENT_SHA "${LOCAL}"
     SERVICE_SHA="${CURRENT_SHA}"
+  fi
+
+  if [ -n "${SERVICE_DOCKER_TAG}" ]; then
+    SERVICE_SHA="$(get_docker_sha "${STARDOCK_REPOSITORY}:${SERVICE_DOCKER_TAG}")"
   fi
 
   #sha for both the service and the orders asking for it, changing either
