@@ -35,21 +35,9 @@ function pre_start() {
   # container
   DO_WE_HAVE_THE_LKG=$(docker image ls -a --format '{{.Repository}}:{{.Tag}}' | egrep "${STARDOCK_REPOSITORY}:${LAST_KNOWN_GOOD_CONTAINER}$" || true)
 
-  # this 'use existing container' step is simply for optimizing restart of the
-  # LAST container we used, so we check to see if we're being asked to use the
-  # LKG and that we do indeed HAVE the LKG
+  # Determine if we have a last known good
   if [ "${name}" == "${LAST_KNOWN_GOOD_CONTAINER}" -a -n "${DO_WE_HAVE_THE_LKG}" ]; then
     warn "init-serve-order|existing_container:${name}"
-    # TODO: Implement a LKG / Docker style
-    # warn "using existing container ${name}"
-    # lxc-start --name ${name} -d
-    # starphleet-lxc-wait ${name} RUNNING
-    # lxc-attach --name ${name} -- bash starphleet-wait-network
-    # if dev_mode && [ -n "${DEVMODE_UNBIND_GIT_DIR}" ]; then
-    #   lxc-attach --name ${name} -- sudo -H -u ${STARPHLEET_APP_USER} bash -c "rsync -rlKt '${ORDER_LOCAL}/' '/home/ubuntu/app/'"
-    #   lxc-attach --name ${name} -- sudo -H -u ${STARPHLEET_APP_USER} bash -c "[ -f '${DEVMODE_BUILD_CACHE}' ] && rsync -rav --exclude-from='${DEVMODE_BUILD_CACHE}' --delete '${ORDER_LOCAL}/' '/home/ubuntu/app/'"
-    # fi
-    :
   else
     warn "init-serve-order|new_container:${name}"
     # Statuses are used as state in various places
@@ -207,7 +195,6 @@ function post_start() {
     #   { stop ; exit 0; }
     # fi
 
-    # Update this containers status with 'online'
 
     # Announce HUPS in case someone goes crazy
     echo "HUP_REQUESTED: ${order} ${name}" | logger
@@ -219,6 +206,7 @@ function post_start() {
     # Trigger new publish configs and a hup of nginx
     "${DIR}/stardock-hup-nginx"
 
+    # Update this containers status with 'online'
     echo 'online' > "${STATUS_FILE}"
     announce "init-serve-order|online:${name}"
 
