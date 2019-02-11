@@ -150,7 +150,7 @@ function post_start() {
     # Do we still want to use this?  maybe?  If yes, docker has
     # a built in expose we can use
     # stardock-expose "${name}" "${HEADQUARTERS_LOCAL}/${order}/orders"
-    stardock-reaper "${name}" "${order}" --force
+    "${DIR}/stardock-reaper" "${name}" "${order}" --force
 
   else
     echo 'checking' > "${STATUS_FILE}"
