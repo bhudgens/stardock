@@ -22,7 +22,7 @@ function docker_run() {
       --network "${STARDOCK_NETWORK_NAME}" \
       --name "stardock-monitor-remotes" \
       -v "${STARDOCK_CACHE}/data":"/var/data" \
-     -v "${STARDOCK_KEY}":"${STARDOCK_KEY}" \
+      -v "${STARDOCK_KEY}":"${STARDOCK_KEY}" \
       "${STARDOCK_REPOSITORY}:${STARDOCK_BASE}" sleep infinity
   fi
 
