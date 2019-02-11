@@ -110,18 +110,13 @@ function docker_run() {
                | perl -pe 's|export ||' ) \
     -v "${STARDOCK_CACHE}/data":"/var/data" \
     "${STARDOCK_REPOSITORY}:${name}" & # sudo -E -H -u "${STARDOCK_APP_USER}" $@ &
-    # --env-file <( env | cut -f1 -d= ) \
 
   MY_DOCKER_CHILD=$!
 }
 
 function start() {
   info "init-serve-order|starting:${name}"
-  if [ "${UNPUBLISHED}" == "1" ]; then
-    docker_run "sleep infinity"
-  else
-    docker_run "/home/ubuntu/start web"
-  fi
+  docker_run
 }
 
 ##########################################################################
