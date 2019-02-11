@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+### Usage:
+###    stardock-init-monitor-remotes
+### --help
+###
+### One of the primary init threads that manages monitoring
+### repos.  This will look through the HQ's and try to
+### start any orders files
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+set -x
+
+function docker_run() {
+  docker start "stardock-monitor-remotes"
+
+  # This might look funny but the exit code from 'exec' above
+  # when we perform a stardock-git-sync _should_ be 137 when
+  # piped through docker.  Anything else implies something
+  # went wrong making the container and we need to run it below
+  if [ $? -gt 0 ]; then
+    "${DIR}/stardock-docker-container-destroy" "stardock-monitor-remotes"
+    docker run -d \
+      --network "${STARDOCK_NETWORK_NAME}" \
+      --name "stardock-monitor-remotes" \
+      -v "${STARDOCK_CACHE}/data":"/var/data" \
+      "${STARDOCK_REPOSITORY}:${STARDOCK_BASE}" sleep infinity
+  fi
+
+  docker exec "stardock-monitor-remotes" /bin/bash -c "$@"
+
+}
+
+while [ 1 ]; do
+  #auto deploy each ordered remote
+  for remote in $(find "${HEADQUARTERS_LOCAL}" -maxdepth 2 -type f -name remote); do
+    unset SERVICE_GIT_URL
+    SERVICE_NAME="$(basename $(dirname ${remote}))"
+    run_orders "${remote}"
+    if [ -n "${SERVICE_GIT_URL}" ]; then
+      docker_run "${DIR}/stardock-git-sync ${SERVICE_GIT_URL} /var/data/${SERVICE_NAME}"
+    fi
+  done
+  sleep "${STARDOCK_PULSE}"
+done
