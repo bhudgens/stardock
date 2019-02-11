@@ -303,7 +303,6 @@ docker commit \
   -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
   "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${IMAGE_TAG_NAME}"
 
-
 # docker image tag \
 #   "${IMAGE_NAME}" \
 #

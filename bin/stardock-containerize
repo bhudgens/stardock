@@ -81,7 +81,7 @@ info "build_script|fetching_buildpack:\${ORDERS_NAME}"
 sudo mkdir -p "\${HOME}/build"
 sudo chown -R "${STARDOCK_APP_USER}:${STARDOCK_APP_USER}" "\${HOME}/build"
 if [ "${git_url}" == "-" ]; then
-  sudo -E "${DIR}/stardock-git-sync" "https://github.com/wballard/null-buildpack.git"  "\${HOME}/build/buildpacks/ZZZ-NULL"
+  sudo -E "${DIR}/stardock-git-sync" "https://github.com/bhudgens/null-buildpack.git"  "\${HOME}/build/buildpacks/ZZZ-NULL"
 fi
 
 info "build_script|builder:${ORDERS}"
