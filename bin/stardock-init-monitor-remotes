@@ -8,7 +8,6 @@
 ### start any orders files
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
-set -x
 
 function docker_run() {
   docker start "stardock-monitor-remotes"

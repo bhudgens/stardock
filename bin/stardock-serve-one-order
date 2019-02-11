@@ -8,7 +8,7 @@
 ### against any missing a current set of orders
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
-set -x
+
 
 die_on_error
 run_as_root_or_die
