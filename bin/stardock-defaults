@@ -32,7 +32,13 @@ export STARDOCK_NETWORK_NAME="stardock"
 export STARDOCK_NETWORK_CIDR="10.0.0.0/16"
 export STARDOCK_NETWORK_GW="10.0.0.1"
 
-export STARDOCK_REPOSITORY="stardock"
+# We do it this way so we can detect if someone
+# sets a different repository.  There would be
+# no reason to push to remote repositories if
+# they don't change to a remote and the default
+# is still configured
+export STARDOCK_REPOSITORY_DEFAULT="stardock"
+export STARDOCK_REPOSITORY="${STARDOCK_REPOSITORY}"
 
 # Support default set elsewhere
 export HEADQUARTERS_ENV="${HEADQUARTERS_ENV:-${HEADQUARTERS_LOCAL}/.stardock}"
