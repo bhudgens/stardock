@@ -34,6 +34,10 @@ function docker_create() {
 
 docker_pull "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}" || true
 
+[ -d "${STARDOCK_NGINX_RUNTIME}" ] && rm -rf "${STARDOCK_NGINX_RUNTIME}"
+mkdir -p "${STARDOCK_NGINX_RUNTIME}"
+cp -R "${STARDOCK_OVERLAYS}"/nginx/* "${STARDOCK_NGINX_RUNTIME}/"
+
 if ! docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -q "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}"; then
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
 
