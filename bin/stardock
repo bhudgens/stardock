@@ -25,6 +25,7 @@ INITS=${INITS:-"
   ${DIR}/stardock-init-nginx
   ${DIR}/stardock-init-nginx-hupper
   ${DIR}/stardock-init-monitor-headquarters
+  ${DIR}/stardock-init-monitor-remotes
   ${DIR}/stardock-init-reaper
 "}
 
