@@ -3,6 +3,14 @@ Description=Stardock
 
 [Service]
 WorkingDirectory=/var/stardock
+Environmet="INITS=
+  /var/data/stardock-init-monitor-repos
+  /var/data/stardock-init-nginx
+  /var/data/stardock-init-nginx-hupper
+  /var/data/stardock-init-monitor-headquarters
+  /var/data/stardock-init-monitor-remotes
+  /var/data/stardock-init-reaper
+"
 ExecStart=/bin/bash -c "/var/stardock/bin/stardock"
 Restart=always
 
