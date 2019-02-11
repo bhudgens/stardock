@@ -32,7 +32,7 @@ function docker_create() {
    --name "${STARDOCK_NGINX_CONTAINER}" "${STARDOCK_REPOSITORY}:${STARDOCK_BASE}"
 }
 
-docker_pull "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}"
+docker_pull "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}" || true
 
 if ! docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -q "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}"; then
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
@@ -65,7 +65,7 @@ if ! docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -q "${STARDOCK_R
     "${STARDOCK_NGINX_CONTAINER}" "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}"
 
   docker_pull "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}"
-  
+
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
   info "install-nginx|created_container:${STARDOCK_NGINX_CONTAINER}"
 fi
