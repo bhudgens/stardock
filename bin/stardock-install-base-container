@@ -8,8 +8,12 @@
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
+docker_pull "${STARDOCK_REPOSITORY}:${STARDOCK_BASE}"
+
 if ! docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -q "${STARDOCK_REPOSITORY}:${STARDOCK_BASE}"; then
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_BASE}"
   "${DIR}/stardock-containermake" "${STARDOCK_BASE}" "${STARDOCK_BIN}/stardock-scripts-base-container"
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_BASE}"
 fi
+
+docker_push "${STARDOCK_REPOSITORY}:${STARDOCK_BASE}"
