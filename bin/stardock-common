@@ -396,9 +396,11 @@ function guards() {
   if ! is_running_in_container; then
   # There are some fundamental requirements for Stardock to work
     if ! which docker           > /dev/null \
+    || ! which aws              > /dev/null \
     || ! which jq               > /dev/null ; then
       fatal "
       You must install the following programs to run Stardock:
+        awscli
         docker
         jq
       "
