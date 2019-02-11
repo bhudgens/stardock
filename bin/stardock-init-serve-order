@@ -56,37 +56,14 @@ function pre_start() {
 
     # We should destroy any existing images
     "${DIR}/stardock-docker-image-destroy" "${name}"
-    "${DIR}/stardock-containerize" "${SERVICE_GIT_URL:--}" "${name}" "${HEADQUARTERS_LOCAL}/${order}"
+    if ! "${DIR}/stardock-containerize" "${SERVICE_GIT_URL:--}" "${name}" "${HEADQUARTERS_LOCAL}/${order}"; then
+      echo 'building failed' > "${STATUS_FILE}"
+      # TODO: Work on Maillog in a non-upstart world
+      # mail_log
+      exit 1
+    fi
 
-    # TODO: Figure out container storage in the cloud later
-    # CONTAINERIZE_EXIT_CODE=$?
-    # If we are a serve-only server, it's possible containermake will fail
-    # because the container does not yet exist in S3.  We want to keep trying
-    # to get it indefinitely.
-    # if is_container_storage_on_s3 \
-    # && [ -z "${BUILD_CONTAINERS}" ] \
-    # && [ -n "${SERVE_CONTAINERS}" ] \
-    # && [ ${CONTAINERIZE_EXIT_CODE} -eq ${EXIT_CODE_FOR_FAILED_S3_DOWNLOADS} ]; then
-    #   info 'Failed due to container not existing in S3 - Trying again'
-    #   echo 'building failed' > "${STATUS_FILE}"
-    #   # Least fancy way to trigger a full rebuild but still let us punt on
-    #   # the pre-start instead of having to send signals further down the
-    #   # upstart chain.  By removing the orders sha we can totally exit out
-    #   # and monitor_orders will start us back up next cycle
-    #   rm "${CURRENT_ORDERS}/${order}/.orders_sha"
-    #   exit 1
-    # fi
-
-    # TODO: Figure out container storage in the cloud later
-    # Container Failed to Build on Build Server?
-    # if is_container_storage_on_s3 \
-    # && [ -n "${BUILD_CONTAINERS}" ] \
-    # && [ ${CONTAINERIZE_EXIT_CODE} -gt 0 ]; then
-    #   info 'Container Failed To Build'
-    #   echo 'building failed' > "${STATUS_FILE}"
-    #   mail_log
-    #   exit 1
-    # fi
+    docker_push "${STARDOCK_REPOSITORY}:${name}"
   fi
 }
 
