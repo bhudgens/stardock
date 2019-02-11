@@ -83,13 +83,32 @@ function pre_start() {
 ## Start - Start the above container
 ##########################################################################
 function docker_run() {
+  ORDERS_FILE="${HEADQUARTERS_LOCAL}/${order}/orders"
   # We are not destroying the image we just made - only the container
   # so we can get a clean start with the image
   "${DIR}/stardock-docker-container-destroy" "${name}" || true
+  # XXX: Debug
+  # Leave this in for a while because I imagine this
+  # will need some tweaking as we find nefarious things
+  # in orders files I wasn't expecting and nothing I do
+  # works the first time
+  echo '--------------- ENVIRONMENT ---------------'
+  cat <( envsubst < "${ORDERS_FILE}" \
+             | egrep -v '#.*' \
+             | egrep export \
+             | perl -pe 's|export ||' )
+  echo '--------------- ----------- ---------------'
+  # The envsubst evaluates their orders file and chomps out any
+  # exports to pass them along to the container
   docker run \
     --rm \
     --network "${STARDOCK_NETWORK_NAME}" \
     --name "${name}" \
+    --env-file <( envsubst < "${ORDERS_FILE}" \
+               | egrep -v '#.*' \
+               | egrep export \
+               | perl -pe 's|export ||' ) \
+    -v "${STARDOCK_CACHE}/data":"/var/data" \
     "${STARDOCK_REPOSITORY}:${name}" & # sudo -E -H -u "${STARDOCK_APP_USER}" $@ &
     # --env-file <( env | cut -f1 -d= ) \
 
