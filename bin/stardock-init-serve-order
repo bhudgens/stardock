@@ -38,6 +38,17 @@ function pre_start() {
   # Determine if we have a last known good
   if [ "${name}" == "${LAST_KNOWN_GOOD_CONTAINER}" -a -n "${DO_WE_HAVE_THE_LKG}" ]; then
     warn "init-serve-order|existing_container:${name}"
+
+  # If we only service containers the only
+  # thing we will try is pulling one and
+  # if that fails we will purge the orders
+  # sha so starphleet will try again on PULSE
+  # elif is_container_storage_on_s3 \
+  # && [ -z "${BUILD_CONTAINERS}" ] \
+  # && [ -n "${SERVE_CONTAINERS}" ]; then
+  #   if ! docker_pull "${STARDOCK_REPOSITORY}:${name}"; then
+  #     rm "${CURRENT_ORDERS}/${order}/.orders_sha"
+  #   fi
   else
     warn "init-serve-order|new_container:${name}"
     # Statuses are used as state in various places
