@@ -26,7 +26,7 @@ function pre_start() {
   #pre stop if the service demands it
   if [ "${STOP_BEFORE_AUTODEPLOY}" == "1" ]; then
     info stopping before autodeploy
-    starphleet-reaper "${name}" "${order}" --force
+    "${DIR}/starphleet-reaper" "${name}" "${order}" --force
   fi
 
 
