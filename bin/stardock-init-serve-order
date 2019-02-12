@@ -18,7 +18,10 @@ run_as_root_or_die
 function pre_start() {
   info "init-serve-order|building:${name}"
 
-  ORDER_LOCAL="${HEADQUARTERS_LOCAL}/${order}/git"
+  # XXX: Do we need?
+  # Used by latest_AUTHOR
+  # ORDER_LOCAL="${HEADQUARTERS_LOCAL}/${order}/git"
+
   STATUS_FILE="${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"
 
   run_orders "${HEADQUARTERS_LOCAL}/${order}/orders"
