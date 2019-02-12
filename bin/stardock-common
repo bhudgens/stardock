@@ -241,13 +241,12 @@ function run_orders()
 
   dockerdeploy () {
     info "common|dockerdeploy:${1}"
+
+    # We -intentionally- require the person supply
+    # both a repository and a tag.  This is even
+    # if they plan to use a docker hub container
     STARDOCK_REPOSITORY="$(echo $1 | cut -f1 -d':')"
     SERVICE_DOCKER_TAG="$(echo $1 | cut -f2 -d':')"
-
-    # If they don't include a $repo in their url then
-    # they are asking to run a standard docker hub container
-    # and they only passed us a tag name in the repo field
-    [ -n "${SERVICE_DOCKER_TAG}" ] && SERVICE_DOCKER_TAG=${STARDOCK_REPOSITORY}
   }
 
   autodeploy () {
