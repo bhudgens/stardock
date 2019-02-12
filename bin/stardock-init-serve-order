@@ -229,8 +229,17 @@ function post_start() {
 
 
     # Connect this container to the Docker discovery name
+    # BUG: We have to lower case the DNS name because NGINX
+    #      looks for lowercase names and Docker has a known
+    #      bug in libnetwork that is not compliance and makes
+    #      it case sensitive:
+    # https://github.com/moby/moby/issues/28689#issuecomment-262407822
+    BUG_FIX_LOWER_CASE_NETWORK=$(echo ${order} | tr '[:upper:]' '[:lower:]')
+
     docker network disconnect "${STARDOCK_NETWORK_NAME}" "${name}"
-    docker network connect --alias "${order}" "${STARDOCK_NETWORK_NAME}" "${name}"
+    docker network connect \
+      --alias "${BUG_FIX_LOWER_CASE_NETWORK}" \
+      "${STARDOCK_NETWORK_NAME}" "${name}"
 
     # Trigger new publish configs and a hup of nginx
     "${DIR}/stardock-hup-nginx"
