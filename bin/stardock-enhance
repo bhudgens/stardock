@@ -1,0 +1,266 @@
+#! /usr/bin/env bash
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+########################################################################
+##  Handy tools that aren't probably good enough for starphleet
+########################################################################
+
+if [ -z "${ENHANCE_INIT}" ]; then
+  export ENHANCE_INIT="true"
+  bash --init-file <(cat "${DIR}/stardock-enhance")
+fi
+
+export REGION_CACHE="/tmp/.starphleet-region.txt"
+
+if [ ! -f "${REGION_CACHE}" ]; then
+  touch "${REGION_CACHE}"
+  if ! curl --connect-timeout 1 -s http://169.254.169.254/latest/meta-data/placement/availability-zone | grep 404 > /dev/null; then
+    curl --connect-timeout 1 -s http://169.254.169.254/latest/meta-data/placement/availability-zone > "${REGION_CACHE}"
+  fi
+fi
+export AWS_REGION=$(cat "${REGION_CACHE}")
+AWS_REGION="${AWS_REGION:-${STARPHLEET_EC2_REGION}}"
+AWS_REGION=${AWS_REGION:-"DEVMODE"}
+
+export LABEL="${RUNNING_ON}[${AWS_REGION}]"
+
+cat << EOF
+
+---------------------------------
+Starphleet Monkey Patches:
+
+  Directories
+    hq = Change to headquarters dir
+    co = Change to Current Orders dir
+    nx = Change to Starphleet NGINX dir
+
+  Logs:
+    sl = starphleet-logs <service>
+    ml = Tail Mail Logs
+    mo = Tail "monitors orders" upstart log
+    mr = Tail "remotes" upstart log
+    mh = Tail "headquarters" upstart log
+    fl = Grep the last 1000000 lines of syslog
+    fa = Grep the last 1000000 lines of access_logs
+    ta = Tail Syslog (accepts variable for grep)
+    tns = Tail Syslog and /var/log/upstart/starphleet_nginx.log
+    hup = NGINX Hupper Logs
+    sll = Starphleet List Logs - ordered by time (build logs)
+    reap = Tail the Reaper Logs
+    sst = starphleet-status
+    wst = Watch starphleet-status
+    trub = starphleet-status --trouble
+
+  Mail:
+    cm = View local mail on devships
+
+  Interacting with Containers:
+    lxstart = Fuzzy search to start a dead container
+    lxstop = Fuzzy search to stop a running container
+    ru = Show running containers
+    st = Show stopped containers
+    sa = starphleet-attach <service>
+
+  Redeploying Service:
+    sr = starphleet-retry-deploy <service>
+    srd = starphleet-redeploy <service> (WARNING: KILLS ALL!)
+
+EOF
+cat << EOF
+
+  Help:
+    ? = This help
+
+EOF
+
+## Make the prompt region specific
+export color_prompt=yes
+if [ "$color_prompt" = yes ]; then
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@'${LABEL}'\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+else
+    PS1='${debian_chroot:+($debian_chroot)}\u@'${LABEL}':\w\$ '
+fi
+
+DATA_DIR="$(echo /var/lib/lxc/data)"
+
+## Aliases
+alias sa="sudo starphleet-attach"
+alias rq="sudo touch /var/lib/lxc/data/mailqueue/.requeue; sudo chmod 777 /var/lib/lxc/data/mailqueue/.requeue"
+alias ml="sudo tail -n 5000 -f /var/log/mail.log"
+alias sl="starphleet-logs"
+alias sr="sudo starphleet-retry-deploy"
+alias srd="sudo starphleet-redeploy"
+alias hq="cd ${HEADQUARTERS_LOCAL}"
+alias co="cd /var/starphleet/current_orders"
+alias nx="cd /var/starphleet/nginx"
+alias getip='sudo ifconfig eth0 | grep "inet addr" | cut -f2 -d":" | cut -f1 -d" "'
+alias mo="sudo tail -n 5000 -f /var/log/upstart/starphleet_monitor_orders.log"
+alias mr="sudo tail -n 5000 -f /var/log/upstart/starphleet_monitor_remotes.log"
+alias mh="sudo tail -n 5000 -f /var/log/upstart/starphleet_monitor_headquarters.log"
+alias ru="sudo lxc-ls -f | grep -v starphleet-base | grep RUNNING"
+alias st="sudo lxc-ls -f | grep -v starphleet-base | grep STOPPED"
+alias rl="rm /tmp/.starphleet-enhance*; source ${HOME}/.bashrc"
+alias sst="starphleet-status"
+alias wst="watch --color starphleet-status"
+alias fl="tail -n 1000000 /var/log/syslog | grep "
+alias fa="tail -n 1000000 /var/log/upstart/starphleet_access.log | grep "
+alias trub="starphleet-status --trouble"
+alias lxstart="sudo starphleet-start"
+alias lxstop="sudo starphleet-stop"
+alias hc="curl http://localhost/PUBLIC-forkulator/full_system_hc"
+alias hco="curl http://localhost/PUBLIC-forkulator/full_system_hc_passed_once"
+alias iq="watch 'cd ${DATA_DIR}/mailqueue; sudo find ./processing | wc -l | xargs echo Processing\$1; sudo find ./incoming | wc -l | xargs echo Incoming\$1; sudo find . | grep -v complete'"
+alias hup="sudo tail -n 5000 -f /var/log/upstart/starphleet_nginx_hupper.log"
+alias reap="sudo tail -n 5000 -f /var/log/upstart/starphleet_reaper.log"
+alias sp="sudo /starphleet/provision/patch"
+alias ?="source ${DIR}/stardock-enhance"
+
+## Functions
+
+function state ()
+{
+  ON_S3=$(is_container_storage_on_s3 && echo "true" || echo "false")
+  echo "S3_DESTINATION  : ${S3_STORAGE_BUCKET_PATH}"
+  echo "CONTAINERS_ON_S3: $ON_S3"
+  echo "SERVE_CONTAINERS: ${SERVE_CONTAINERS}"
+  echo "BUILD_CONTAINERS: ${BUILD_CONTAINERS}"
+}
+
+export -f state
+
+# srdar
+# SRD All running containers "gently" (no force)
+#
+# This will try to reap any stale stopped containers using the running
+# containers as the source list.  This is _not_ the same as the orphan
+# reaper.
+function srdar ()
+{
+  for container in $(sudo lxc-ls -f | grep RUNNING | awk '{print $1}'); do
+    SERVICE="$(echo $container | rev | cut -c17- | rev)"
+    sudo starphleet-reaper "${container}" "${SERVICE}"
+  done
+}
+export -f srdar
+
+# Tail the logs (maybe with search)
+function ta ()
+{
+   [ ! -z $1 ] && sudo tail -f /var/log/syslog | egrep $1 && return
+   sudo tail -n 5000 -f /var/log/syslog
+}
+export -f ta
+
+# Tail nginx AND syslog
+function tns ()
+{
+   [ ! -z $1 ] && sudo tail -n 5000 -f /var/log/upstart/starphleet_nginx.log /var/log/syslog | egrep $1 && return
+   sudo tail -n 5000 -f /var/log/syslog /var/log/upstart/starphleet_nginx.log
+}
+export -f tns
+
+# Tail last log
+function sll ()
+{
+   [ -z $1 ] && echo "Provide a fuzzy service name" && return
+   cd /var/log/upstart
+   echo "Select which log you want to tail (highest selection is last log)"
+   select logfile in $(ls -alFtr *${1}* | grep starphleet_serve_order | awk '{print $9}' | sed -e 's/starphleet_serve_order-//'); do
+     [ -n ${service} ] && sudo tail -n 5000 -f starphleet_serve_order-${logfile}
+     break
+   done
+}
+export -f sll
+
+# Tail last healthcheck
+function hcl ()
+{
+  [ -z $1 ] && echo "Provide a fuzzy service name" && return
+  cd /var/log/upstart
+  echo "Select which log you want to tail (highest selection is last log)"
+  select logfile in $(ls -alFtr *${1}* | grep starphleet_orders_healthcheck | awk '{print $9}' | sed -e 's/starphleet_orders_healthcheck-//'); do
+   [ -n ${service} ] && sudo tail -n 5000 -f starphleet_orders_healthcheck-${logfile}
+   break
+  done
+}
+export -f hcl
+
+# SRD Stopped Containers
+#
+# !Note:  This is purposely not exposed to the help menu above
+function srdsc()
+{
+  for package in $(sudo lxc-ls -f | grep -v starphleet-base | grep STOPPED | awk '{print $1}' | rev | cut -c17- | rev);
+  do
+    sudo starphleet-redeploy "${package}"
+  done
+}
+export -f srdsc
+
+# SRD All Containers
+#
+# !Note:  This is purposely not exposed to the help menu above
+function srdac()
+{
+  ! dev_mode && return
+  for package in $(sudo lxc-ls -f | grep -v starphleet-base | awk '{print $1}' | rev | cut -c17- | rev);
+  do
+    sudo starphleet-redeploy "${package}"
+  done
+}
+export -f srdac
+
+# emit_devdb_config
+#
+# Try to output the devdb config for this machine.
+# Generation of the file is handled by the HQ
+function emit_devdb_config() {
+  TRY=10
+  while ((TRY--)); do
+    if [ -f "${DEVDB_METADATA_CACHE}" ] \
+       && cat "${DEVDB_METADATA_CACHE}" | grep \{ > /dev/null; then
+      cat "${DEVDB_METADATA_CACHE}";
+      break;
+    else
+      echo "Trying to output results ${TRY} more times"
+    fi
+    sleep 1
+  done
+}
+export -f emit_devdb_config
+
+# lkg
+#
+# Allow an admin to select a last known good container to deploy
+# as an override to what's currently running on the machine
+function lkg() {
+  JQ=$(which jq)
+  if [ -z "${JQ}" ]; then
+    sudo apt-get update -y
+    sudo apt-get install -y jq
+  fi
+  # Because Perl supports non-greedy regex and thus is superior
+  # to all other languages on the planet.
+  export BUCKET="$(echo ${S3_STORAGE_BUCKET_PATH} | perl -pe 's|(.*?)/.*|$1|')"
+  export KEY_PREFIX="$(echo ${S3_STORAGE_BUCKET_PATH} | perl -pe 's|.*?/(.*)|$1|')"
+  export SERVICE="${1:?Must provide service name}"
+  select container in $( \
+                        aws s3api list-objects \
+                          --bucket "${BUCKET}" \
+                          --prefix "${KEY_PREFIX}/${SERVICE}" \
+                          | jq -r '.Contents |= sort_by(.LastModified) | .Contents[].Key' \
+                          | sed -E -e "s|${KEY_PREFIX}/||" \
+                          | sed -E -e "s|.tar.gz||" \
+                       ); do
+    echo "Using: ${container}"
+    export SERVICE_PINNED_TO_CONTAINER="${container}"
+    CONTAINER_ROOT=/var/lib/lxc/${container}
+    sudo touch "${CONTAINER_ROOT}.serve_only_override"
+    sudo \
+      FORCE_DEPLOY_REASON="Pinning Container" \
+      FORCE_SERVICE_PINNED_TO_CONTAINER="${container}" \
+      starphleet-serve-one-order "${SERVICE}"
+    break
+  done
+}
+export -f lkg
