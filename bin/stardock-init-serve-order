@@ -247,17 +247,6 @@ function post_start() {
     # Update this containers status with 'online'
     echo 'online' > "${STATUS_FILE}"
     announce "init-serve-order|online:${name}"
-
-    # Don't move on until the container exits
-    # while [ 1 ]; do
-    #   if ! docker container inspect "${DOCKER_ID}" \
-    #         | jq '.[0].State.Status' \
-    #         | grep -q running; then
-    #     echo 'stopped' > "${STATUS_FILE}"
-    #     break
-    #   fi
-    #   sleep "${STARDOCK_PULSE}"
-    # done &
   fi
 }
 
