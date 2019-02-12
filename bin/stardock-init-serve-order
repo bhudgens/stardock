@@ -49,7 +49,7 @@ function pre_start() {
 
   # We are trying to determine if we should build this thing
   # or re-use what we have so we are gatheing intel first
-  DO_WE_HAVE_THE_IMAGE=$(docker image ls -a --format '{{.Repository}}:{{.Tag}}' | egrep "${STARDOCK_REPOSITORY}:${name}" || true)
+  DO_WE_HAVE_THE_IMAGE=$(docker image ls -a --format '{{.Repository}}:{{.Tag}}' | egrep "${IMAGE_TO_PULL}" || true)
 
 
   ##########################################################
@@ -59,7 +59,7 @@ function pre_start() {
   ##########################################################
   if [ -n "${DO_WE_HAVE_THE_IMAGE}" ] \
   && [ -n "${SERVICE_DOCKER_TAG}" ]; then
-    warn "init-serve-order|remote_docker_image:${name}"
+    warn "init-serve-order|remote_docker_image:${IMAGE_TO_PULL}|name:${name}"
 
     # When deploying docker images we make the service sha
     # the docker image sha so we know if a newer docker
@@ -67,8 +67,8 @@ function pre_start() {
     # longer current.  That could have happened  while
     # we were getting setup so lets make sure we have
     # the correct sha in our container name
-    DOCKER_IMAGE_SHA=$(get_docker_image_sha "${STARDOCK_REPOSITORY}:${name}")
-    if ! echo "${name}" | egrep "-${SHA}$"; then
+    DOCKER_IMAGE_SHA=$(get_docker_image_sha "${IMAGE_TO_PULL}")
+    if ! echo "${name}" | egrep "\-${DOCKER_IMAGE_SHA}$"; then
       exit 1
     fi
 
