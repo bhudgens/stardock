@@ -44,15 +44,35 @@ function pre_start() {
   # or re-use what we have so we are gatheing intel first
   DO_WE_HAVE_THE_IMAGE=$(docker image ls -a --format '{{.Repository}}:{{.Tag}}' | egrep "${STARDOCK_REPOSITORY}:${name}" || true)
 
+
+  ##########################################################
+  # - We have the image and it was a dockerdeploy -
+  # Stardock doesn't build these, we only fetch and
+  # run them so we are just going to announce it
+  ##########################################################
+  if [ -n "${DO_WE_HAVE_THE_IMAGE}" ] \
+  && [ -n "${SERVICE_DOCKER_TAG}" ]; then
+    warn "init-serve-order|remote_docker_image:${name}"
+
+    # When deploying docker images we make the service sha
+    # the docker image sha so we know if a newer docker
+    # image is pulled and our container running is no
+    # longer current.  That could have happened  while
+    # we were getting setup so lets make sure we have
+    # the correct sha in our container name
+    DOCKER_IMAGE_SHA=$(get_docker_image_sha "${STARDOCK_REPOSITORY}:${name}")
+    if ! echo "${name}" | egrep "-${SHA}$"; then
+      exit 1
+    fi
+
   ##########################################################
   # - Already Have LKG -
   # If we already have the image and it was already flagged
   # on this server as good then we know we can run it
   ##########################################################
-  if [ "${name}" == "${LAST_KNOWN_GOOD_CONTAINER}" ] \
-  && [ -n "${DO_WE_HAVE_THE_IMAGE}" ]; then
+  elif [ "${name}" == "${LAST_KNOWN_GOOD_CONTAINER}" ] \
+  &&   [ -n "${DO_WE_HAVE_THE_IMAGE}" ]; then
     warn "init-serve-order|existing_image:${name}"
-
 
   ##########################################################
   # - We have the image and it was a dockerdeploy -
@@ -63,6 +83,16 @@ function pre_start() {
   &&   [ -n "${SERVICE_DOCKER_TAG}" ]; then
     warn "init-serve-order|remote_docker_image:${name}"
 
+    # When deploying docker images we make the service sha
+    # the docker image sha so we know if a newer docker
+    # image is pulled and our container running is no
+    # longer current.  That could have happened  while
+    # we were getting setup so lets make sure we have
+    # the correct sha in our container name
+    DOCKER_IMAGE_SHA=$(get_docker_image_sha "${STARDOCK_REPOSITORY}:${name}")
+    if ! echo "${name}" | egrep "-${SHA}$"; then
+      exit 1
+    fi
 
   ##########################################################
   # - We have the image and we are storing in remote repo -
@@ -73,7 +103,6 @@ function pre_start() {
   elif [ -n "${DO_WE_HAVE_THE_IMAGE}" ] \
   &&   docker_remote_is_enabled; then
     warn "init-serve-order|remote_docker_image:${name}"
-
 
   ##########################################################
   # - Build the Container -
@@ -97,6 +126,7 @@ function pre_start() {
     fi
 
   fi
+
 }
 
 ##########################################################################
@@ -121,6 +151,10 @@ function docker_run() {
              | egrep export \
              | perl -pe 's|export ||' )
   echo '--------------- ----------- ---------------'
+  # When it comes to docker containers we just run we
+  # want to use the actual sha in case the tag moves
+  # for the image on an updated pull
+  IMAGE_TO_RUN=${DOCKER_IMAGE_SHA:-"${STARDOCK_REPOSITORY}:${name}"}
   # The envsubst evaluates their orders file and chomps out any
   # exports to pass them along to the container
   docker run \
@@ -133,7 +167,7 @@ function docker_run() {
                | egrep export \
                | perl -pe 's|export ||' ) \
     -v "${STARDOCK_CACHE}/data":"/var/data" \
-    "${STARDOCK_REPOSITORY}:${name}" & # sudo -E -H -u "${STARDOCK_APP_USER}" $@ &
+    "${IMAGE_TO_RUN}" & # sudo -E -H -u "${STARDOCK_APP_USER}" $@ &
 
   MY_DOCKER_CHILD=$!
 }

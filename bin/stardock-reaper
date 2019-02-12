@@ -16,7 +16,7 @@ for repository_and_tag in $(docker image ls --format '{{.Repository}},{{.Tag}}' 
 
   repository="$(echo $repository_and_tag | cut -f1 -d',')"
   name="$(echo $repository_and_tag | cut -f2 -d',')"
-  
+
   STATUS_FILE="${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"
 
   # If the status file exists get the status
@@ -116,7 +116,7 @@ do
     container_name=$(basename "${CONTAINER_STATUS_FILE}" | sed -e 's/.stardockstatus.//')
 
     # Check if there's a container associated with this status file
-    check=$(docker container ls --format '{{.Image}}' | egrep ":${container_name}$")
+    check=$(docker container ls --format '{{.Names}}' | egrep "^${container_name}$")
 
     info "reaper|stale_check:${CONTAINER_STATUS_FILE}"
 

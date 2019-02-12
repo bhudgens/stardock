@@ -112,7 +112,7 @@ if [ -n "${DEPLOY_REASON}" ]; then
   fi
 
   if [ -n "${SERVICE_DOCKER_TAG}" ]; then
-    SERVICE_SHA="$(get_docker_sha "${STARDOCK_REPOSITORY}:${SERVICE_DOCKER_TAG}")"
+    SERVICE_SHA="$(get_docker_image_sha "${STARDOCK_REPOSITORY}:${SERVICE_DOCKER_TAG}")"
   fi
 
   #sha for both the service and the orders asking for it, changing either
