@@ -5,9 +5,10 @@ source "$DIR/stardock-launcher"
 ##  Handy tools that aren't probably good enough for starphleet
 ########################################################################
 
+
 if [ -z "${ENHANCE_INIT}" ]; then
   export ENHANCE_INIT="true"
-  bash --init-file <(cat "${DIR}/stardock-enhance")
+  exec bash --init-file <(cat "${DIR}/stardock-enhance")
 fi
 
 export REGION_CACHE="/tmp/.starphleet-region.txt"
