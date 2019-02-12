@@ -29,26 +29,50 @@ function pre_start() {
     "${DIR}/starphleet-reaper" "${name}" "${order}" --force
   fi
 
-
+  docker_pull "${STARDOCK_REPOSITORY}:${name}" || true
   LAST_KNOWN_GOOD_CONTAINER=$(cat "${CURRENT_ORDERS}/${order}/.last_known_good_container" || true)
   # this will give us the container name of the LKG ONLY IF the system has the
   # container
-  DO_WE_HAVE_THE_LKG=$(docker image ls -a --format '{{.Repository}}:{{.Tag}}' | egrep "${STARDOCK_REPOSITORY}:${LAST_KNOWN_GOOD_CONTAINER}$" || true)
+  DO_WE_HAVE_THE_IMAGE=$(docker image ls -a --format '{{.Repository}}:{{.Tag}}' | egrep "${STARDOCK_REPOSITORY}:${name}" || true)
 
-  # Determine if we have a last known good
-  if [ "${name}" == "${LAST_KNOWN_GOOD_CONTAINER}" -a -n "${DO_WE_HAVE_THE_LKG}" ]; then
-    warn "init-serve-order|existing_container:${name}"
+  ##########################################################
+  # - Already Have LKG -
+  # If we already have the image and it was already flagged
+  # on this server as good then we know we can run it
+  ##########################################################
+  if [ "${name}" == "${LAST_KNOWN_GOOD_CONTAINER}" ] \
+  && [ -n "${DO_WE_HAVE_THE_IMAGE}" ]; then
+    warn "init-serve-order|existing_image:${name}"
 
-  # If we only service containers the only
-  # thing we will try is pulling one and
-  # if that fails we will purge the orders
-  # sha so starphleet will try again on PULSE
-  # elif is_container_storage_on_s3 \
-  # && [ -z "${BUILD_CONTAINERS}" ] \
-  # && [ -n "${SERVE_CONTAINERS}" ]; then
-  #   if ! docker_pull "${STARDOCK_REPOSITORY}:${name}"; then
-  #     rm "${CURRENT_ORDERS}/${order}/.orders_sha"
-  #   fi
+
+  ##########################################################
+  # - We have the image and it was a dockerdeploy -
+  # Stardock doesn't build these, we only fetch and
+  # run them so we are just going to announce it
+  ##########################################################
+  elif [ -n "${DO_WE_HAVE_THE_IMAGE}" ] \
+  &&   [ -n "${SERVICE_DOCKER_TAG}" ]; then
+    warn "init-serve-order|remote_docker_image:${name}"
+
+
+  ##########################################################
+  # - We have the image and we are storing in remote repo -
+  # If we have a remote repository then this image
+  # came from there and that would imply it has already
+  # passed a healthcheck and been pushed by a build server
+  ##########################################################
+  elif [ -n "${DO_WE_HAVE_THE_IMAGE}" ] \
+  &&   docker_remote_is_enabled; then
+    warn "init-serve-order|remote_docker_image:${name}"
+
+
+  ##########################################################
+  # - Build the Container -
+  # These are the legacy conditions.  If not of the other
+  # items triggered above then we need to build a legacy
+  # container.  These used to be built in LXC and are the
+  # classic version of containers
+  ##########################################################
   else
     warn "init-serve-order|new_container:${name}"
     # Statuses are used as state in various places
@@ -63,7 +87,6 @@ function pre_start() {
       exit 1
     fi
 
-    docker_push "${STARDOCK_REPOSITORY}:${name}"
   fi
 }
 
