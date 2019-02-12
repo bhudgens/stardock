@@ -32,7 +32,7 @@ function docker_run() {
 
 while [ 1 ]; do
   #auto deploy each ordered remote
-  docker_run chown -R ubuntu:ubuntu /var/data
+  docker_run "chown -R ubuntu:ubuntu /var/data"
   for remote in $(find "${HEADQUARTERS_LOCAL}" -maxdepth 2 -type f -name remote); do
     unset SERVICE_GIT_URL
     SERVICE_NAME="$(basename $(dirname ${remote}))"
