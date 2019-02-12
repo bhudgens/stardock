@@ -31,11 +31,18 @@ function pre_start() {
     "${DIR}/starphleet-reaper" "${name}" "${order}" --force
   fi
 
+  # We ran the orders above and now we know if we are working
+  # on a docker container or we need to try to build our own
+  # so what we pull with docker will depend on that.
+  [ -n "${SERVICE_DOCKER_TAG}" ] \
+    && IMAGE_TO_PULL="${STARDOCK_REPOSITORY}:${SERVICE_DOCKER_TAG}" \
+    || IMAGE_TO_PULL="${STARDOCK_REPOSITORY}:${name}"
+
   # This could create a race condition where we pull a new
   # image before we get started.  We will handle that below
   # by confirming the container name sent to us from upstream
   # still matches the sha we are about to launch
-  docker_pull "${STARDOCK_REPOSITORY}:${name}" || true
+  docker_pull "${IMAGE_TO_PULL}" || true
 
   # Have we seen a healthy container for this orders?
   LAST_KNOWN_GOOD_CONTAINER=$(cat "${CURRENT_ORDERS}/${order}/.last_known_good_container" || true)
