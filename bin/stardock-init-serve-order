@@ -224,6 +224,10 @@ function post_start() {
     # Announce HUPS in case someone goes crazy
     echo "HUP_REQUESTED: ${order} ${name}" | logger
 
+    # It's safe to push this to a remote repo
+    docker_push "${STARDOCK_REPOSITORY}:${name}"
+
+
     # Connect this container to the Docker discovery name
     docker network disconnect "${STARDOCK_NETWORK_NAME}" "${name}"
     docker network connect --alias "${order}" "${STARDOCK_NETWORK_NAME}" "${name}"
