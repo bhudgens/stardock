@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# vim:syn=sh
+### Usage:
+###    stardock-docker-image-sync <docker_repo> <docker_tag>
+### --help
+###
+### This will stay persistent as long as the container stays running.  We'll
+### run the full lifecycle of the container from here.
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+# If we have the image -and- the image is running then we don't need to trigger
+# anything to happen downstream that would cause a sync.  It might seem odd since
+# we are in a shell but we exit with "1" to indicate we think things are in sync.
+# That's because, in bash, if we exit with a 0 it will be truthy
+docker_pull "${docker_repo}:${docker_tag}"
+DOCKER_IMAGE_SHA=$(get_docker_image_sha "${docker_repo}:${docker_tag}")
+if docker image ls -a --format '{{.Repository}}:{{.Tag}}' | egrep "${docker_repo}:${docker_tag}"; then
+  if docker container ls -a --format '{{.Image}}' | egrep "${DOCKER_IMAGE_SHA}"; then
+    exit 1
+  fi
+fi
+
+exit 0
