@@ -75,6 +75,14 @@ function run_ship_scripts() {
   fi
 }
 
+function get_docker_image_sha() {
+  SHA=$(docker image ls -a --format '{{.Repository}}:{{.Tag}},{{.ID}}' \
+    | egrep "^$1," \
+    | perl -pe 's|.*?,||')
+
+  echo ${SHA:0:7}
+}
+
 function docker_remote_is_enabled() {
   if [ "${STARDOCK_REPOSITORY}" != "${STARDOCK_REPOSITORY_DEFAULT}" ] \
   && [ -n "${STARDOCK_ENABLE_REMOTE_REPOSITORY}" ]; then
