@@ -13,12 +13,24 @@ source "$DIR/stardock-launcher"
 # The egrep may be confusing.  We are testing if the container name is
 # in the first column or the last column.  We're doing it this way so
 # that a partial match doesn't give us a false positive
-for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep "^${image_name},|,${image_name}$"); do
-  IMAGE_NAME=$(echo $container | cut -f1 -d',')
-  FRIENDLY_NAME=$(echo $container | cut -f2 -d',')
-  docker stop "${FRIENDLY_NAME}" > /dev/null
-  info "killing_container|${FRIENDLY_NAME}"
-  docker rm "${FRIENDLY_NAME}"
+
+META=$(docker image ls -a --format '{{.Tag}},{{.Repository}},{{ID}}')
+NAME=$(echo $META | cut -f1 -d',')
+REPO=$(echo $META | cut -f2 -d',')
+ID=$(echo $META | cut -f3 -d',')
+SHA=(get_docker_image_sha "${REPO}:${NAME}")
+
+# We may run containers with various image references and
+# we'll try to capture all of them when we purge containers
+# before we purge an image
+for purge_search in "${REPO}:${NAME}" "${SHA}" "${ID}"; do
+  for container in $(docker ps -a --format '{{.Image}},{{.Name}}' | egrep "^${purge_search},"); do
+    IMAGE_NAME=$(echo $container | cut -f1 -d',')
+    FRIENDLY_NAME=$(echo $container | cut -f2 -d',')
+    docker stop "${FRIENDLY_NAME}" > /dev/null
+    info "killing_container|${FRIENDLY_NAME}"
+    docker rm "${FRIENDLY_NAME}"
+  done
 done
 
 # Now we can kill the actual image
