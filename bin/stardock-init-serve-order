@@ -26,16 +26,22 @@ function pre_start() {
 
   run_orders "${HEADQUARTERS_LOCAL}/${order}/orders"
 
-  #pre stop if the service demands it
   if [ "${STOP_BEFORE_AUTODEPLOY}" == "1" ]; then
     info stopping before autodeploy
     "${DIR}/starphleet-reaper" "${name}" "${order}" --force
   fi
 
+  # This could create a race condition where we pull a new
+  # image before we get started.  We will handle that below
+  # by confirming the container name sent to us from upstream
+  # still matches the sha we are about to launch
   docker_pull "${STARDOCK_REPOSITORY}:${name}" || true
+
+  # Have we seen a healthy container for this orders?
   LAST_KNOWN_GOOD_CONTAINER=$(cat "${CURRENT_ORDERS}/${order}/.last_known_good_container" || true)
-  # this will give us the container name of the LKG ONLY IF the system has the
-  # container
+
+  # We are trying to determine if we should build this thing
+  # or re-use what we have so we are gatheing intel first
   DO_WE_HAVE_THE_IMAGE=$(docker image ls -a --format '{{.Repository}}:{{.Tag}}' | egrep "${STARDOCK_REPOSITORY}:${name}" || true)
 
   ##########################################################
