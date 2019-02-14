@@ -7,7 +7,44 @@
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
+function update_sudo() {
+#allow passwordless sudoers
+cat > /etc/sudoers <<'EOF'
+Defaults	env_reset
+Defaults	mail_badpass
+Defaults	secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+root	ALL=(ALL:ALL) ALL
+%admin ALL=(ALL) ALL
+%sudo	ALL=(ALL:ALL) NOPASSWD:ALL
+vagrant ALL=NOPASSWD: ALL
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-attach
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-launcher
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-redeploy
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-retry-deploy
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-start
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-stop
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-status
+captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-serve-one-order
+captain ALL=(ALL) NOPASSWD: /usr/bin/tail
+captain ALL=(ALL) NOPASSWD: /usr/bin/lxc-ls
+Defaults env_keep="SSH_AUTH_SOCK"
+Defaults !requiretty
+EOF
+}
+
 while [ 1 ]; do
+
+  # Captain
+  make_user "${CAPTAIN}" "${CAPTAIN_HOME}"
+  adduser "${CAPTAIN}" adm
+
+  # Admiral Only
+  make_user "${ADMIRAL}" "${ADMIRAL_HOME}"
+  adduser "${ADMIRAL}" sudo
+  adduser "${ADMIRAL}" adm
+  adduser "${ADMIRAL}" root
+
+  update_sudo
   # grant The Admiral access
   # the auth keys are reset everytime
   # this means if any keys have been manually added to the account, they will be overwritten
