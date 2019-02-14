@@ -18,7 +18,7 @@ if [ -n "${SERVICE_DOCKER_TAG}" ]; then
   for repository_and_tag in $(docker image ls --format '{{.Repository}}:{{.Tag}},{{.ID}}' \
     | grep --extended-regexp -e "^${STARDOCK_REPOSITORY}:${SERVICE_DOCKER_TAG},"); do
 
-    repository="$(echo $repository_and_tag | cut -f1 -d',' | cut -f2 -d':')"
+    repository="$(echo $repository_and_tag | cut -f1 -d',' | cut -f1 -d':')"
     name="$(echo $repository_and_tag | cut -f1 -d',' | cut -f2 -d':')"
     id="$(echo $repository_and_tag | cut -f2 -d',')"
 
