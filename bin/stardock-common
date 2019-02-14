@@ -124,7 +124,10 @@ function make_user() {
   THE_USER="${1}"
   HOME_DIR="${2}"
   useradd "${THE_USER}" -m -d "${HOME_DIR}"
-  test -d "${HOME_DIR}/.ssh" || mkdir -p "${HOME_DIR}"/.ssh; ssh-keygen -t rsa -f "${HOME_DIR}/.ssh/id_rsa" -q -N "" -C 'user on the phleet'
+  if [ ! -d "${HOME_DIR}/.ssh" ]; then
+    mkdir -p "${HOME_DIR}"/.ssh
+    ssh-keygen -t rsa -f "${HOME_DIR}/.ssh/id_rsa" -q -N "" -C 'user on the phleet'
+  fi
   chown -R "${THE_USER}":"${THE_USER}" "${HOME_DIR}"
   info "${THE_USER}" created
 }
