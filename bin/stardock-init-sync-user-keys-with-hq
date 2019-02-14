@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ### Usage:
-###    starphleet-public-keys
+###    stardock-init-sync-user-keys-with-hq
 ### --help
 ###
 ### Call this to synchronize headquarters public keys to the admiral
@@ -17,14 +17,14 @@ root	ALL=(ALL:ALL) ALL
 %admin ALL=(ALL) ALL
 %sudo	ALL=(ALL:ALL) NOPASSWD:ALL
 vagrant ALL=NOPASSWD: ALL
-captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-attach
-captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-launcher
-captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-redeploy
-captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-retry-deploy
-captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-start
-captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-stop
-captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-status
-captain ALL=(ALL) NOPASSWD: /usr/bin/starphleet-serve-one-order
+captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-attach
+captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-launcher
+captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-redeploy
+captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-retry-deploy
+captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-start
+captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-stop
+captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-status
+captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-serve-one-order
 captain ALL=(ALL) NOPASSWD: /usr/bin/tail
 captain ALL=(ALL) NOPASSWD: /usr/bin/lxc-ls
 Defaults env_keep="SSH_AUTH_SOCK"
@@ -58,14 +58,17 @@ while [ 1 ]; do
   # base touch on auth file to create
   touch ${AUTHFILE}
   #look for public keys pushed on the ship as well as in the headquarters
-  for f in $(find "${ADMIRALAUTHKEYS}" "${PUBLIC_KEYS}" | grep -v '\.git')
-  do
-    if ssh-keygen -l -f "${f}" > /dev/null; then
-      #direct ssh as the admiral
-      cat "${f}" >> ${AUTHFILE}
-      echo '' >> ${AUTHFILE}
-    fi
-  done
+
+  if [ -d "${ADMIRALAUTHKEYS}" ]; then
+    for f in $(find "${ADMIRALAUTHKEYS}" "${PUBLIC_KEYS}" | grep -v '\.git')
+    do
+      if ssh-keygen -l -f "${f}" > /dev/null; then
+        #direct ssh as the admiral
+        cat "${f}" >> ${AUTHFILE}
+        echo '' >> ${AUTHFILE}
+      fi
+    done
+  fi
   cat "${ADMIRALSSH}/id_rsa.pub" >> ${AUTHFILE}
 
   chmod 600 ${AUTHFILE}
@@ -86,14 +89,16 @@ while [ 1 ]; do
   # base touch on auth file to create
   touch ${AUTHFILE}
   #look for public keys pushed on the ship as well as in the headquarters
-  for f in $(find "${CAPTAINAUTHKEYS}" "${PUBLIC_KEYS}" | grep -v '\.git')
-  do
-    if ssh-keygen -l -f "${f}" > /dev/null; then
-      #direct ssh as the admiral
-      cat "${f}" >> ${AUTHFILE}
-      echo '' >> ${AUTHFILE}
-    fi
-  done
+  if [ -d "${CAPTAINAUTHKEYS}" ]; then
+    for f in $(find "${CAPTAINAUTHKEYS}" "${PUBLIC_KEYS}" | grep -v '\.git')
+    do
+      if ssh-keygen -l -f "${f}" > /dev/null; then
+        #direct ssh as the admiral
+        cat "${f}" >> ${AUTHFILE}
+        echo '' >> ${AUTHFILE}
+      fi
+    done
+  fi
   cat "${CAPTAINSSH}/id_rsa.pub" >> ${AUTHFILE}
 
   chmod 600 ${AUTHFILE}
