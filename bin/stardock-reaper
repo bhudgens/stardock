@@ -16,13 +16,13 @@ run_orders "${HEADQUARTERS_LOCAL}/${order}/orders"
 # because we're only adding shas to the container.
 if [ -n "${SERVICE_DOCKER_TAG}" ]; then
   for repository_and_tag in $(docker image ls --format '{{.Repository}}:{{.Tag}},{{.ID}}' \
-  | grep --extended-regexp -e "^${STARDOCK_REPOSITORY}:${SERVICE_DOCKER_TAG},"); do
+    | grep --extended-regexp -e "^${STARDOCK_REPOSITORY}:${SERVICE_DOCKER_TAG},"); do
 
     repository="$(echo $repository_and_tag | cut -f1 -d',' | cut -f2 -d':')"
     name="$(echo $repository_and_tag | cut -f1 -d',' | cut -f2 -d':')"
     id="$(echo $repository_and_tag | cut -f2 -d',')"
 
-    for iamge_and_container in $(docker container ls --format '{{.Image}},{{.Names}}') \
+    for iamge_and_container in $(docker container ls --format '{{.Image}},{{.Names}}' \
       | grep --extended-regexp -e ",${order}-[a-f0-9]+-[a-f0-9]+" \
       | grep --invert-match "${current_service_name}"); do
 
