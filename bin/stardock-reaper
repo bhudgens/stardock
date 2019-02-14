@@ -26,10 +26,10 @@ if [ -n "${SERVICE_DOCKER_TAG}" ]; then
       | grep --extended-regexp -e ",${order}-[a-f0-9]+-[a-f0-9]+" \
       | grep --invert-match "${current_service_name}"); do
 
-      image=$(echo container | cut -f1 -d',')
-      container=$(echo container | cut -f2 -d',')
+      image=$(echo ${iamge_and_container} | cut -f1 -d',')
+      container=$(echo ${iamge_and_container} | cut -f2 -d',')
 
-      if echo $id | egrep -q "^${image}"; then
+      if ! echo $id | egrep -q "^${image}"; then
         "${DIR}/stardock-docker-container-destroy" "${container}"
         # This might fail sometimes if there is a container still using
         # the image.  That is 'intended'.  That's why we aren't doing
