@@ -4,7 +4,7 @@ We could have taken two paths with ECR storage and this explains them.
 
 | Status   | Deciders  | Date       |
 | -------- | --------- | ---------- |
-| proposed | @bhudgens | 02/21/2019 |
+| resolved | @bhudgens | 02/21/2019 |
 
 ## Context and Problem Statement
 
