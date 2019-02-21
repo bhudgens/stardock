@@ -99,7 +99,7 @@ function pre_start() {
   # TODO: It could be that we need to do something here
   # to trigger a retry
   ##########################################################
-  elif [ -n "${SERVE_ONLY_SHIP}" ]
+  elif [ -n "${SERVE_ONLY_SHIP}" ]; then
     warn "init-serve-order|server_only_ship:${name}"
     exit 1
 
