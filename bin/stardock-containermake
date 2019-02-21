@@ -127,7 +127,7 @@ if [ -z "${SERVE_CONTAINERS}" ] \
      -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
      -v "${STARDOCK_KEY}":"${STARDOCK_KEY}" \
      --add-host="localship:${BRIDGE_IP}" \
-     --name "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${base_container_name}"
+     --name "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}/${base_container_name}:latest"
 
     # These are files we'll want to refresh every time we
     # start a new container
@@ -276,16 +276,13 @@ fi
 #   docker stop "${CONTAINER_NAME}"
 # fi
 
-# Make our container image
-# DATESTAMP="$(date +d%y%m%d-d%H%M%S)"
-
-[ -n "${base_container_name}" ] \
-  && IMAGE_NAME="${base_container_name}:${CONTAINER_NAME}" \
-  || IMAGE_NAME="${STARDOCK_REPOSITORY}:${STARDOCK_BASE}"
-
 [ -n "${base_container_name}" ] && [ -n "${order}" ]\
   && IMAGE_TAG_NAME="${CONTAINER_NAME}" \
   || IMAGE_TAG_NAME="${STARDOCK_BASE}"
+
+[ -n "${base_container_name}" ] && [ -n "${order}" ]\
+  && SERVICE_NAME="${order}" \
+  || SERVICE_NAME="${STARDOCK_BASE}"
 
   # if [ "${UNPUBLISHED}" == "1" ]; then
   #   docker_run "sleep infinity"
@@ -301,14 +298,11 @@ fi
 docker commit \
   --change "${DOCKER_CMD}" \
   -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
-  "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${IMAGE_TAG_NAME}"
+  "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}/${SERVICE_NAME}:${IMAGE_TAG_NAME}"
 
-# docker image tag \
-#   "${IMAGE_NAME}" \
-#
-# docker image tag \
-#   "${IMAGE_NAME}" \
-#   "${IMAGE_TAG_NAME}:latest"
+docker image tag \
+  "${STARDOCK_REPOSITORY}/${SERVICE_NAME}:${IMAGE_TAG_NAME}" \
+  "${STARDOCK_REPOSITORY}/${SERVICE_NAME}:latest"
 
 info "containermake|completed:${CONTAINER_NAME}"
 # Remove lock file to guarantee release

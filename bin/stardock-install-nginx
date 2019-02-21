@@ -29,16 +29,16 @@ function docker_create() {
    -v "${STARDOCK_NGINX_RUNTIME}":"${STARDOCK_NGINX_RUNTIME}" \
    -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
    --add-host="localship:${BRIDGE_IP}" \
-   --name "${STARDOCK_NGINX_CONTAINER}" "${STARDOCK_REPOSITORY}:${STARDOCK_BASE}"
+   --name "${STARDOCK_NGINX_CONTAINER}" "${STARDOCK_REPOSITORY}/${STARDOCK_BASE}:latest"
 }
 
-docker_pull "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}" || true
+docker_pull "${STARDOCK_REPOSITORY}/${STARDOCK_NGINX_CONTAINER}:latest" || true
 
 [ -d "${STARDOCK_NGINX_RUNTIME}" ] && rm -rf "${STARDOCK_NGINX_RUNTIME}"
 mkdir -p "${STARDOCK_NGINX_RUNTIME}"
 cp -R "${STARDOCK_OVERLAYS}"/nginx/* "${STARDOCK_NGINX_RUNTIME}/"
 
-if ! docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -q "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}"; then
+if ! docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -q "${STARDOCK_REPOSITORY}/${STARDOCK_NGINX_CONTAINER}:latest"; then
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
 
   bridge_ip
@@ -66,9 +66,9 @@ if ! docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -q "${STARDOCK_R
 
   docker commit \
     -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
-    "${STARDOCK_NGINX_CONTAINER}" "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}"
+    "${STARDOCK_NGINX_CONTAINER}" "${STARDOCK_REPOSITORY}/${STARDOCK_NGINX_CONTAINER}:latest"
 
-  docker_push "${STARDOCK_REPOSITORY}:${STARDOCK_NGINX_CONTAINER}"
+  docker_push "${STARDOCK_REPOSITORY}/${STARDOCK_NGINX_CONTAINER}:latest"
 
   "${DIR}/stardock-docker-container-destroy" "${STARDOCK_NGINX_CONTAINER}"
   info "install-nginx|created_container:${STARDOCK_NGINX_CONTAINER}"

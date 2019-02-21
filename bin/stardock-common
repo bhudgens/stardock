@@ -64,6 +64,11 @@ function autodeploy() {
   export AUTODEPLOY="${1}"
 }
 
+function get_aws_region() {
+  export AWS_AVAILABILITY_ZONE=$(curl -s 'http://169.254.169.254/latest/meta-data/placement/availability-zone')
+  export AWS_REGION=$(echo $availability_zone | sed 's/[a-z]$//')
+}
+
 function run_ship_scripts() {
   if [ -d "${SHIP_SCRIPTS}" ]; then
     for file in $(find "${SHIP_SCRIPTS}") ; do
@@ -115,10 +120,25 @@ function docker_push() {
   # containers from other people's containers
   # so we will ignore a push on a build server
   if docker_remote_is_enabled \
-  && [ ! -n "${SERVICE_DOCKER_TAG}" ]; then
+  && [ -z "${SERVICE_DOCKER_TAG}" ]; then
+    local repo=$(echo $1 | cut -f1 -d':')
+    local image=$(echo $1 | cut -f2 -d':')
+    local repo_url_removed=$(echo $repo | perl -pe 's|.*?/||')
+
+    # Make sure we know the region for our aws command
+    # but we hope someone set this in our environment
+    # so we don't have to look it up every time
+    [ -n "${AWS_REGION}" ] || get_aws_region
+
+    # Always try to create the repo in AWS
+    # before we attempt to push to said repo
+    aws --region "${AWS_REGION}" ecr create-repository --repository-name "${repo_url_removed}" || true
+
+    # Push the image to said repo
     docker push "${1}"
   fi
 }
+
 
 function make_user() {
   THE_USER="${1}"

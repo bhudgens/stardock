@@ -36,7 +36,7 @@ function pre_start() {
   # so what we pull with docker will depend on that.
   [ -n "${SERVICE_DOCKER_TAG}" ] \
     && IMAGE_TO_PULL="${STARDOCK_REPOSITORY}:${SERVICE_DOCKER_TAG}" \
-    || IMAGE_TO_PULL="${STARDOCK_REPOSITORY}:${name}"
+    || IMAGE_TO_PULL="${STARDOCK_REPOSITORY}/${order}:${name}"
 
   # This could create a race condition where we pull a new
   # image before we get started.  We will handle that below
@@ -82,26 +82,6 @@ function pre_start() {
     warn "init-serve-order|existing_image:${name}"
 
   ##########################################################
-  # - We have the image and it was a dockerdeploy -
-  # Stardock doesn't build these, we only fetch and
-  # run them so we are just going to announce it
-  ##########################################################
-  elif [ -n "${DO_WE_HAVE_THE_IMAGE}" ] \
-  &&   [ -n "${SERVICE_DOCKER_TAG}" ]; then
-    warn "init-serve-order|remote_docker_image:${name}"
-
-    # When deploying docker images we make the service sha
-    # the docker image sha so we know if a newer docker
-    # image is pulled and our container running is no
-    # longer current.  That could have happened  while
-    # we were getting setup so lets make sure we have
-    # the correct sha in our container name
-    DOCKER_IMAGE_SHA=$(get_docker_image_sha "${STARDOCK_REPOSITORY}:${name}")
-    if ! echo "${name}" | egrep "-${SHA}$"; then
-      exit 1
-    fi
-
-  ##########################################################
   # - We have the image and we are storing in remote repo -
   # If we have a remote repository then this image
   # came from there and that would imply it has already
@@ -110,6 +90,18 @@ function pre_start() {
   elif [ -n "${DO_WE_HAVE_THE_IMAGE}" ] \
   &&   docker_remote_is_enabled; then
     warn "init-serve-order|remote_docker_image:${name}"
+
+  ##########################################################
+  # - Serve Only?
+  # If we only serve containers and we haven't found one
+  # yet then we should punt because something didn't work
+  # out.
+  # TODO: It could be that we need to do something here
+  # to trigger a retry
+  ##########################################################
+  elif [ -n "${SERVE_ONLY_SHIP}" ]
+    warn "init-serve-order|server_only_ship:${name}"
+    exit 1
 
   ##########################################################
   # - Build the Container -
@@ -161,7 +153,7 @@ function docker_run() {
   # When it comes to docker containers we just run we
   # want to use the actual sha in case the tag moves
   # for the image on an updated pull
-  IMAGE_TO_RUN=${DOCKER_IMAGE_SHA:-"${STARDOCK_REPOSITORY}:${name}"}
+  IMAGE_TO_RUN=${DOCKER_IMAGE_SHA:-"${STARDOCK_REPOSITORY}/${order}:${name}"}
   # The envsubst evaluates their orders file and chomps out any
   # exports to pass them along to the container
   docker run \
@@ -279,8 +271,8 @@ function post_start() {
     echo "HUP_REQUESTED: ${order} ${name}" | logger
 
     # It's safe to push this to a remote repo
-    docker_push "${STARDOCK_REPOSITORY}:${name}"
-
+    docker_push "${STARDOCK_REPOSITORY}/${order}:${name}"
+    docker_push "${STARDOCK_REPOSITORY}/${order}:latest"
 
     # Connect this container to the Docker discovery name
     # BUG: We have to lower case the DNS name because NGINX

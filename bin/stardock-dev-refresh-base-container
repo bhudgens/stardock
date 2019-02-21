@@ -75,7 +75,7 @@ info "containermake|base_container:${CONTAINER_NAME}"
 docker create -i \
  -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
  --add-host="localship:${BRIDGE_IP}" \
- --name "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${CONTAINER_NAME}"
+ --name "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}/${CONTAINER_NAME}:latest"
 
 docker_exec "mkdir -p ${STARDOCK_ROOT}"
 docker_exec "mkdir -p ${STARDOCK_BIN}"
@@ -124,25 +124,22 @@ docker_cp "${build_script}" "${BUILD_SCRIPT_FULL_PATH}"
 docker_exec "chmod +x '${BUILD_SCRIPT_FULL_PATH}'"
 docker_exec "sudo -H -u ${STARDOCK_APP_USER} bash -c '${BUILD_SCRIPT_FULL_PATH}'"
 
-[ -n "${base_container_name}" ] \
-  && IMAGE_NAME="${base_container_name}:${CONTAINER_NAME}" \
-  || IMAGE_NAME="${STARDOCK_REPOSITORY}:${STARDOCK_BASE}"
+[ -n "${base_container_name}" ] && [ -n "${order}" ]\
+  && SERVICE_NAME="${order}" \
+  || SERVICE_NAME="${STARDOCK_BASE}"
 
 [ -n "${base_container_name}" ] && [ -n "${order}" ]\
   && IMAGE_TAG_NAME="${order}" \
   || IMAGE_TAG_NAME="${STARDOCK_BASE}"
 
 docker commit \
+  --change "${DOCKER_CMD}" \
   -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
-  "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}:${IMAGE_TAG_NAME}"
+  "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}/${SERVICE_NAME}:${IMAGE_TAG_NAME}"
 
-# docker image tag \
-#   "${IMAGE_NAME}" \
-#   "services.glgresearch.com:${IMAGE_TAG_NAME}"
-
-# docker image tag \
-#   "${IMAGE_NAME}" \
-#   "${IMAGE_TAG_NAME}:latest"
+docker image tag \
+  "${STARDOCK_REPOSITORY}/${SERVICE_NAME}:${IMAGE_TAG_NAME}" \
+  "${STARDOCK_REPOSITORY}/${SERVICE_NAME}:latest"
 
 info "containermake|completed:${CONTAINER_NAME}"
 # Remove lock file to guarantee release

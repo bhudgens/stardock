@@ -14,7 +14,7 @@ die_on_error
 run_as_root_or_die
 
 # Go through all containers and reap any orphans
-for repo_and_tag in $(docker image ls --format '{{.Repository}}:{{.Tag}}' | egrep "^${STARDOCK_REPOSITORY}\s*" ); do
+for repo_and_tag in $(docker image ls --format '{{.Repository}}:{{.Tag}}' | egrep "^${STARDOCK_REPOSITORY}" ); do
 
   REPO="$(echo $repo_and_tag | cut -f1 -d':')"
   IMAGE="$(echo $repo_and_tag | cut -f2 -d':')"

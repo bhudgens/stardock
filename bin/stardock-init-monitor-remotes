@@ -23,7 +23,7 @@ function docker_run() {
       --name "stardock-monitor-remotes" \
       -v "${STARDOCK_CACHE}/data":"/var/data" \
       -v "${STARDOCK_KEY}":"${STARDOCK_KEY}" \
-      "${STARDOCK_REPOSITORY}:${STARDOCK_BASE}" sleep infinity
+      "${STARDOCK_REPOSITORY}/${STARDOCK_BASE}:latest" sleep infinity
   fi
 
   docker exec "stardock-monitor-remotes" /bin/bash -c "$@"
