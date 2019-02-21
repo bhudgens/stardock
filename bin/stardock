@@ -36,7 +36,7 @@ declare -A CHILDREN
 function run_daemon() {
   # run daemon
   local INIT_COMMAND=$(echo $1 | perl -pe 's|\s*||g')
-  "$INIT_COMMAND" > "${STARDOCK_LOGS}/$(basename $INIT_COMMAND)" 2>&1 &
+  "$INIT_COMMAND" > "${STARDOCK_LOGS}/$(basename $INIT_COMMAND).log" 2>&1 &
   CHILDREN["$INIT_COMMAND"]=$!
 }
 
