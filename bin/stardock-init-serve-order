@@ -117,6 +117,7 @@ function pre_start() {
 
     # We should destroy any existing images
     "${DIR}/stardock-docker-image-destroy" "${name}"
+    IS_PUSH_NECESSARY="true"
     if ! "${DIR}/stardock-containerize" "${SERVICE_GIT_URL:--}" "${name}" "${HEADQUARTERS_LOCAL}/${order}"; then
       echo 'building failed' > "${STATUS_FILE}"
       # TODO: Work on Maillog in a non-upstart world
@@ -270,9 +271,12 @@ function post_start() {
     # Announce HUPS in case someone goes crazy
     echo "HUP_REQUESTED: ${order} ${name}" | logger
 
+
     # It's safe to push this to a remote repo
-    docker_push "${STARDOCK_REPOSITORY}/${order}:${name}"
-    docker_push "${STARDOCK_REPOSITORY}/${order}:latest"
+    if [ -n "${IS_PUSH_NECESSARY}" ]; then
+      docker_push "${STARDOCK_REPOSITORY}/${order}:${name}"
+      docker_push "${STARDOCK_REPOSITORY}/${order}:latest"
+    fi
 
     # Connect this container to the Docker discovery name
     # BUG: We have to lower case the DNS name because NGINX
