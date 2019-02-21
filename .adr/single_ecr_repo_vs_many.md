@@ -32,7 +32,7 @@ $repo/$phleet/$service2:latest
 
 ## Decision Drivers
 
--   User Bias:  When describing this fork to a couple folks they naturally leaned towards multiple repos/single image
+-   User Bias:  When describing this fork to a couple folks they naturally leaned towards multiple repos/single image.  Spoke to Raul/Ian.  Ian strongly preferred being able to use the docker:latest functionality
 -   Functionality:  An enhancement to how Stardock works would be that it can naturally discover containers in ECR.  A built in feature of docker is using the "latest" tag when a tag is not specified.  We would not have been able to use this "latest" feature if we retained a single ECR repo for all images.  THe latest tag wouldn't be able to have significance  
 
 
