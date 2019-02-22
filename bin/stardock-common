@@ -95,6 +95,15 @@ function docker_remote_is_enabled() {
   fi
 }
 
+function wait_for_docker_container() {
+  while [ 1 ]; do
+    if docker ps -a --format '{{.Names}}' | egrep "${1}$" ; then
+      break
+    fi
+    sleep 10
+  done
+}
+
 function docker_login() {
   if docker_remote_is_enabled ; then
     local whoami=$(whoami)
