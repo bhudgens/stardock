@@ -11,5 +11,5 @@ source "$DIR/stardock-launcher"
 run_as_root_or_die
 
 "${DIR}/starphleet-reaper" zzzzzzzzz "${order}" --force
-rm -rf "${HEADQUARTERS_LOCAL}/${order}/git"
-rm "${CURRENT_ORDERS}/${order}/.orders_sha"
+[ -d "${HEADQUARTERS_LOCAL}/${order}/git" ] && rm -rf "${HEADQUARTERS_LOCAL}/${order}/git" || true
+[ -f "${CURRENT_ORDERS}/${order}/.orders_sha" ] && rm "${CURRENT_ORDERS}/${order}/.orders_sha"
