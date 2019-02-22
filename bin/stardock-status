@@ -19,7 +19,7 @@ EOF
     FILTER="\'\'"
   fi
   # for container_file in $(find "${CURRENT_ORDERS}" -regex '.*\.container$' | grep ${FILTER})
-  for status_file in $(find "${CURRENT_ORDERS}" -type f -name ".stardockstatus.*" | grep --extended-regexp -e ".*-([a-f0-9]){7}-([a-f0-9]){7}$" | grep ${FILTER})
+  for status_file in $(find "${CURRENT_ORDERS}" -type f -name ".stardockstatus.*" | grep --extended-regexp -e ".*-[a-f0-9]+-[a-f0-9]+$" | grep ${FILTER})
   do
 
     # XXX: This needs a refactor.  Initial iteration used the .container file in error
@@ -126,7 +126,7 @@ EOF
 
     # Now run through all the status files for this order and spit up
     # some info about each container
-    for container_status_file in $(find "${CURRENT_ORDERS}/${ORDER}" -type f -name ".stardockstatus.*" | grep --extended-regexp -e ".*${ORDER}-([a-f0-9]){7}-([a-f0-9]){7}$")
+    for container_status_file in $(find "${CURRENT_ORDERS}/${ORDER}" -type f -name ".stardockstatus.*" | grep --extended-regexp -e ".*${ORDER}-[a-f0-9]+-[a-f0-9]+$")
     do
       # Make sure we aren't using stale data
       unset CONTAINER
