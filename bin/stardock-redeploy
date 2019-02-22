@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+### Usage:
+###    starphleet-redeploy <order>
+### --help
+###
+### Force a service to redeploy, without needing to strobe or push a new
+### version
+export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
+source "$DIR/stardock-launcher"
+
+run_as_root_or_die
+starphleet-reaper zzzzzzzzz "${order}" --force
+rm -rf "${HEADQUARTERS_LOCAL}/${order}/git"
+rm "${CURRENT_ORDERS}/${order}/.orders_sha"
