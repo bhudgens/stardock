@@ -10,7 +10,7 @@ export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 # vim:ft=sh
 
-STARDOCK_NGINX_PORTS_ARG=${STARDOCK_NGINX_PORTS_ARG:-"-p 80:80 -p 443:443"}
+STARDOCK_NGINX_PORTS_ARG=${STARDOCK_NGINX_PORTS_ARG:-"-p 80:80 -p 443:443 -p 8080:8080"}
 
 function docker_run() {
   # We are not destroying the image we just made - only the container

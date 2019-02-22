@@ -57,9 +57,6 @@ Stardock Enhanced
     wst = Watch stardock-status
     trub = stardock-status --trouble
 
-  Mail:
-    cm = View local mail on devships
-
   Interacting with Containers:
     ru = Show running containers
     st = Show stopped containers
