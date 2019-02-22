@@ -97,7 +97,9 @@ function docker_remote_is_enabled() {
 
 function docker_login() {
   if docker_remote_is_enabled ; then
-    if [ ! -f "${HOME}/.docker/config.json" ]; then
+    local whoami=$(whoami)
+    if [ ! -f "/${whoami}/.docker/config.json" ] \
+    || [ ! -f "/home/${whoami}/.docker/config.json" ]; then
       eval $(aws --region us-east-1 ecr get-login --no-include-email)
     fi
   fi
