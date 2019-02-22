@@ -22,8 +22,6 @@ if ! echo $PATH | egrep "^$DIR"; then
   export PATH="${DIR}:$PATH"
 fi
 
-run_as_root_or_die
-
 REGION_CACHE="/tmp/.stardock-region.txt"
 if [ ! -f "${REGION_CACHE}" ]; then
   touch "${REGION_CACHE}"
