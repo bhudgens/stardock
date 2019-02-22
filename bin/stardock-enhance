@@ -82,7 +82,7 @@ else
 fi
 
 ## Aliases
-alias sa="${DIR}/stardock-attach"
+alias sa="sudo ${DIR}/stardock-attach"
 alias srd="sudo ${DIR}/stardock-redeploy"
 alias hq="cd ${HEADQUARTERS_LOCAL}"
 alias co="cd ${CURRENT_ORDERS}"
