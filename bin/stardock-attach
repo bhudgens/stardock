@@ -19,6 +19,6 @@ select container in $(docker container ls --format '{{.Names}}' | grep ${service
   # User's are used to logging into containers as ubuntu but now that
   # we support other kinds of containers the ubuntu user might not
   # exist so we fall back to plain ole bash
-  [ -n ${container} ] && eval docker exec -it "${container}" '/bin/sh -c "su - ubuntu" || /bin/bash'
+  [ -n ${container} ] && eval docker exec -it "${container}" '/bin/sh -c "su - ubuntu || /bin/bash"'
   break;
 done
