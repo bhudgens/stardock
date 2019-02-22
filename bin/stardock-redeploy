@@ -9,6 +9,7 @@ export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
 run_as_root_or_die
-starphleet-reaper zzzzzzzzz "${order}" --force
+
+"${DIR}/starphleet-reaper" zzzzzzzzz "${order}" --force
 rm -rf "${HEADQUARTERS_LOCAL}/${order}/git"
 rm "${CURRENT_ORDERS}/${order}/.orders_sha"
