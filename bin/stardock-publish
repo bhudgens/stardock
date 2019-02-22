@@ -137,7 +137,7 @@ cat << EOF >> "${MOUNT_CONF}"
     rewrite ${public_url}/(.*) /\$sendto/\$1 last;
   }
   set \$upstream http://${order}:${PORT};
-  rewrite ${public_url}/(.*) /\$1 break;
+  rewrite ${public_url}/(.*) /${STARDOCK_REWRITE_PREFIX}\$1 break;
   proxy_pass \$upstream;
   # cache goes here
   proxy_set_header X-Forwarded-Host \$host;
