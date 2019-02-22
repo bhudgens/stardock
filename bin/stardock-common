@@ -428,13 +428,21 @@ function guards() {
   if ! is_running_in_container; then
   # There are some fundamental requirements for Stardock to work
     if ! which docker           > /dev/null \
-    || ! which aws              > /dev/null \
     || ! which jq               > /dev/null ; then
       fatal "
       You must install the following programs to run Stardock:
-        awscli
         docker
         jq
+      "
+    fi
+
+    # We should only guard against AWS cli if we are
+    # configured to use it
+    if [ -n "${STARDOCK_ENABLE_REMOTE_REPOSITORY}" ] \
+    || ! which aws              > /dev/null ; then
+      fatal "
+      You must install the following programs to run Stardock:
+        awscli
       "
     fi
   fi
