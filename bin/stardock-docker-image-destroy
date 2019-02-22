@@ -14,7 +14,8 @@ source "$DIR/stardock-launcher"
 # in the first column or the last column.  We're doing it this way so
 # that a partial match doesn't give us a false positive
 
-META=$(docker image ls -a --format '{{.Tag}},{{.Repository}},{{.ID}}')
+META=$(docker image ls -a --format '{{.Tag}},{{.Repository}},{{.ID}}' \
+        | egrep "^${image_name},")
 NAME=$(echo $META | cut -f1 -d',')
 REPO=$(echo $META | cut -f2 -d',')
 ID=$(echo $META | cut -f3 -d',')
@@ -24,13 +25,24 @@ SHA=(get_docker_image_sha "${REPO}:${NAME}")
 # we'll try to capture all of them when we purge containers
 # before we purge an image
 for purge_search in "${REPO}:${NAME}" "${SHA}" "${ID}"; do
-  for container in $(docker ps -a --format '{{.Image}},{{.Name}}' | egrep "^${purge_search},"); do
+  for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep "^${purge_search},"); do
     IMAGE_NAME=$(echo $container | cut -f1 -d',')
     FRIENDLY_NAME=$(echo $container | cut -f2 -d',')
     docker stop "${FRIENDLY_NAME}" > /dev/null
     info "killing_container|${FRIENDLY_NAME}"
     docker rm "${FRIENDLY_NAME}"
   done
+done
+
+# This is a catchall in case the images got out of sync
+# and we couldn't use metadata above to find the containers
+# used by an image
+for container in $(docker ps -a --format '{{.Image}},{{.Names}}' | egrep ",${image_name}"); do
+  IMAGE_NAME=$(echo $container | cut -f1 -d',')
+  FRIENDLY_NAME=$(echo $container | cut -f2 -d',')
+  docker stop "${FRIENDLY_NAME}" > /dev/null
+  info "killing_container|${FRIENDLY_NAME}"
+  docker rm "${FRIENDLY_NAME}"
 done
 
 # Now we can kill the actual image

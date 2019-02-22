@@ -295,14 +295,16 @@ fi
   && DOCKER_CMD='CMD ["sudo","-E","-u","'"${STARDOCK_APP_USER}"'","/home/ubuntu/start","web"]' \
   || DOCKER_CMD='CMD ["/bin/bash"]'
 
+# The commas are important because the impose lower-case
+# which is required by docker
 docker commit \
   --change "${DOCKER_CMD}" \
   -a "Benjamin Hudgens <benjamin@benjamindavid.com>" \
-  "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}/${SERVICE_NAME}:${IMAGE_TAG_NAME}"
+  "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}/${SERVICE_NAME,,}:${IMAGE_TAG_NAME}"
 
 docker image tag \
-  "${STARDOCK_REPOSITORY}/${SERVICE_NAME}:${IMAGE_TAG_NAME}" \
-  "${STARDOCK_REPOSITORY}/${SERVICE_NAME}:latest"
+  "${STARDOCK_REPOSITORY}/${SERVICE_NAME,,}:${IMAGE_TAG_NAME}" \
+  "${STARDOCK_REPOSITORY}/${SERVICE_NAME,,}:latest"
 
 info "containermake|completed:${CONTAINER_NAME}"
 # Remove lock file to guarantee release

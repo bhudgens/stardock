@@ -36,7 +36,7 @@ function pre_start() {
   # so what we pull with docker will depend on that.
   [ -n "${SERVICE_DOCKER_TAG}" ] \
     && IMAGE_TO_PULL="${STARDOCK_REPOSITORY}:${SERVICE_DOCKER_TAG}" \
-    || IMAGE_TO_PULL="${STARDOCK_REPOSITORY}/${order}:${name}"
+    || IMAGE_TO_PULL="${STARDOCK_REPOSITORY}/${order,,}:${name}"
 
   # This could create a race condition where we pull a new
   # image before we get started.  We will handle that below
@@ -271,11 +271,10 @@ function post_start() {
     # Announce HUPS in case someone goes crazy
     echo "HUP_REQUESTED: ${order} ${name}" | logger
 
-
     # It's safe to push this to a remote repo
     if [ -n "${IS_PUSH_NECESSARY}" ]; then
-      docker_push "${STARDOCK_REPOSITORY}/${order}:${name}"
-      docker_push "${STARDOCK_REPOSITORY}/${order}:latest"
+      docker_push "${STARDOCK_REPOSITORY}/${order,,}:${name}"
+      docker_push "${STARDOCK_REPOSITORY}/${order,,}:latest"
     fi
 
     # Connect this container to the Docker discovery name
