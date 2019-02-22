@@ -1,19 +1,25 @@
 #! /usr/bin/env bash
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
-source "$DIR/stardock-launcher"
 ########################################################################
 ##  Handy tools that aren't probably good enough for starphleet
 ########################################################################
 
-run_as_root_or_die
-
+# Make this so we can just 'run' enhance instead of source it
+# and do some super hacky poo to give us the environment
+# we expect and still link to all the various stardock things
+# regardless of where they are installed
 if [ -z "${ENHANCE_INIT}" ]; then
   export ENHANCE_INIT="true"
+  export DIR_OVERRIDE=$DIR
   exec bash --init-file <(cat "${DIR}/stardock-enhance")
 fi
 
-export REGION_CACHE="/tmp/.starphleet-region.txt"
+DIR=${DIR_OVERRIDE:-$DIR}
+source "/var/stardock/bin/stardock-common"
 
+run_as_root_or_die
+
+export REGION_CACHE="/tmp/.starphleet-region.txt"
 if [ ! -f "${REGION_CACHE}" ]; then
   touch "${REGION_CACHE}"
   if ! curl --connect-timeout 1 -s http://169.254.169.254/latest/meta-data/placement/availability-zone | grep 404 > /dev/null; then
