@@ -14,7 +14,7 @@ source "$DIR/stardock-launcher"
 # in the first column or the last column.  We're doing it this way so
 # that a partial match doesn't give us a false positive
 
-META=$(docker image ls -a --format '{{.Tag}},{{.Repository}},{{ID}}')
+META=$(docker image ls -a --format '{{.Tag}},{{.Repository}},{{.ID}}')
 NAME=$(echo $META | cut -f1 -d',')
 REPO=$(echo $META | cut -f2 -d',')
 ID=$(echo $META | cut -f3 -d',')
