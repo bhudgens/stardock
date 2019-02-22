@@ -15,7 +15,12 @@ if [ -z "${ENHANCE_INIT}" ]; then
 fi
 
 DIR=${DIR_OVERRIDE:-$DIR}
-source "/var/stardock/bin/stardock-common"
+source "${DIR}/stardock-common"
+
+# Add stardock to our path
+if ! echo $PATH | egrep "^$DIR"; then
+  export PATH="${DIR}:$PATH"
+fi
 
 run_as_root_or_die
 
@@ -63,7 +68,6 @@ Stardock Enhanced
     sa = stardock-attach <service>
 
   Redeploying Service:
-    sr = stardock-retry-deploy <service>
     srd = stardock-redeploy <service> (WARNING: KILLS ALL!)
 
   Help:

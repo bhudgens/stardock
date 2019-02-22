@@ -74,6 +74,10 @@ while [ 1 ]; do
   chmod 600 ${AUTHFILE}
   chown ${ADMIRAL}:${ADMIRAL} ${AUTHFILE}
 
+  if ! cat "${ADMIRAL_HOME}/.bashrc" | grep -q stardock-enhance; then
+    echo "${DIR}/stardock-enhance" >> "${ADMIRAL_HOME}/.bashrc"
+  fi
+
   # Grant Captain access
   # The captain user has reduced access to the server intended for managing
   # apps. The auth keys are reset everytime
@@ -103,5 +107,10 @@ while [ 1 ]; do
 
   chmod 600 ${AUTHFILE}
   chown ${CAPTAIN}:${CAPTAIN} ${AUTHFILE}
+
+  if ! cat "${CAPTAIN_HOME}/.bashrc" | grep -q stardock-enhance; then
+    echo "${DIR}/stardock-enhance" >> "${CAPTAIN_HOME}/.bashrc"
+  fi
+
   sleep ${STARDOCK_PULSE}
 done
