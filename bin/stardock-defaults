@@ -74,7 +74,10 @@ if [ "${TERM}" == "unknown" ]; then
   export TERM="xterm-256color"
 fi
 
-export SHIP=ship-$(ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub | awk '{ print $2; }' | sed -e 's/://g')
+if [ -f "/etc/ssh/ssh_host_rsa_key.pub" ]; then
+  SSH_KEY_SIG="$(ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub | awk '{ print $2; }' | sed -e 's/://g')"
+fi
+export SHIP="ship-${SSH_KEY_SIG:-ssh_key_sig_not_found}"
 
 export STARDOCK_APP_USER="ubuntu"
 
