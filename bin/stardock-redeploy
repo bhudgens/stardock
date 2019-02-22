@@ -13,4 +13,6 @@ run_as_root_or_die
 "${DIR}/stardock-reaper" zzzzzzzzz "${order}" --force
 [ -d "${HEADQUARTERS_LOCAL}/${order}/git" ] && rm -rf "${HEADQUARTERS_LOCAL}/${order}/git" || true
 [ -f "${CURRENT_ORDERS}/${order}/.orders_sha" ] && rm "${CURRENT_ORDERS}/${order}/.orders_sha"
-kill -9 $(ps auxw | grep stardock-init-serve-order | egrep "bash.*\s+${order}$" | awk '{print $2}')
+for pid in $(ps auxw | grep stardock-init-serve-order | egrep "bash.*\s+${order}$" | awk '{print $2}'); do
+  kill -9 "${pid}" 
+done
