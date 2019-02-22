@@ -154,7 +154,7 @@ function docker_run() {
   # When it comes to docker containers we just run we
   # want to use the actual sha in case the tag moves
   # for the image on an updated pull
-  IMAGE_TO_RUN=${DOCKER_IMAGE_SHA:-"${STARDOCK_REPOSITORY}/${order}:${name}"}
+  IMAGE_TO_RUN=${DOCKER_IMAGE_SHA:-"${STARDOCK_REPOSITORY}/${order,,}:${name}"}
   # The envsubst evaluates their orders file and chomps out any
   # exports to pass them along to the container
   docker run \
