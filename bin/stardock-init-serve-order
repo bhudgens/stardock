@@ -186,7 +186,6 @@ function post_start() {
   # Since we start the process in the background it can take a few
   # seconds to get going.  Give it a couple secs to start
   wait_for_docker_container "${name}"
-  sleep 2
 
   # Deploy all the things
   if [ "${UNPUBLISHED}" == "1" ]; then
