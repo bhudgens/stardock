@@ -439,7 +439,7 @@ function guards() {
     # We should only guard against AWS cli if we are
     # configured to use it
     if [ -n "${STARDOCK_ENABLE_REMOTE_REPOSITORY}" ] \
-    || ! which aws              > /dev/null ; then
+    && ! which aws              > /dev/null ; then
       fatal "
       You must install the following programs to run Stardock:
         awscli
