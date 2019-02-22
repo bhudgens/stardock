@@ -19,7 +19,7 @@ source "/var/stardock/bin/stardock-common"
 
 run_as_root_or_die
 
-export REGION_CACHE="/tmp/.starphleet-region.txt"
+REGION_CACHE="/tmp/.stardock-region.txt"
 if [ ! -f "${REGION_CACHE}" ]; then
   touch "${REGION_CACHE}"
   if ! curl --connect-timeout 1 -s http://169.254.169.254/latest/meta-data/placement/availability-zone | grep 404 > /dev/null; then
