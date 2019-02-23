@@ -22,20 +22,20 @@ if [ -n "${SERVICE_DOCKER_TAG}" ]; then
     name="$(echo $repository_and_tag | cut -f1 -d',' | cut -f2 -d':')"
     id="$(echo $repository_and_tag | cut -f2 -d',')"
 
-    for iamge_and_container in $(docker container ls --format '{{.Image}},{{.Names}}' \
+    for image_and_container in $(docker container ls --format '{{.Image}},{{.Names}}' \
       | grep --extended-regexp -e ",${order}-[a-f0-9]+-[a-f0-9]+" \
       | grep --invert-match "${current_service_name}"); do
 
-      image=$(echo ${iamge_and_container} | cut -f1 -d',')
-      container=$(echo ${iamge_and_container} | cut -f2 -d',')
+      image=$(echo ${image_and_container} | cut -f1 -d',')
+      container=$(echo ${image_and_container} | cut -f2 -d',')
 
-      if ! echo $id | egrep -q "^${image}"; then
+      if echo $id | egrep -q "^${image}"; then
         "${DIR}/stardock-docker-container-destroy" "${container}"
         # This might fail sometimes if there is a container still using
         # the image.  That is 'intended'.  That's why we aren't doing
         # a force or anything.  We'll try to clean up the image but if
         # it's used we want it to stay around
-        docker rmi "${id}" | true
+        docker rmi "${id}" || true
       fi
 
     done
