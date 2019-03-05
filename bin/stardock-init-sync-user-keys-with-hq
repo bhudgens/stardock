@@ -8,7 +8,7 @@ export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
 
 function update_sudo() {
-#allow passwordless sudoers
+# TODO: Should clean this up
 cat > /etc/sudoers <<'EOF'
 Defaults	env_reset
 Defaults	mail_badpass
@@ -17,16 +17,20 @@ root	ALL=(ALL:ALL) ALL
 %admin ALL=(ALL) ALL
 %sudo	ALL=(ALL:ALL) NOPASSWD:ALL
 vagrant ALL=NOPASSWD: ALL
-captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-attach
-captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-launcher
-captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-redeploy
-captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-retry-deploy
-captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-start
-captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-stop
-captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-status
-captain ALL=(ALL) NOPASSWD: /usr/bin/stardock-serve-one-order
+EOF
+cat >> /etc/sudoers << EOF
+captain ALL=(ALL) NOPASSWD: ${STARDOCK_BIN}/stardock-attach
+captain ALL=(ALL) NOPASSWD: ${STARDOCK_BIN}/stardock-launcher
+captain ALL=(ALL) NOPASSWD: ${STARDOCK_BIN}/stardock-redeploy
+captain ALL=(ALL) NOPASSWD: ${STARDOCK_BIN}/stardock-retry-deploy
+captain ALL=(ALL) NOPASSWD: ${STARDOCK_BIN}/stardock-start
+captain ALL=(ALL) NOPASSWD: ${STARDOCK_BIN}/stardock-stop
+captain ALL=(ALL) NOPASSWD: ${STARDOCK_BIN}/stardock-status
+captain ALL=(ALL) NOPASSWD: ${STARDOCK_BIN}/stardock-serve-one-order
 captain ALL=(ALL) NOPASSWD: /usr/bin/tail
 captain ALL=(ALL) NOPASSWD: /usr/bin/lxc-ls
+EOF
+cat > /etc/sudoers <<'EOF'
 Defaults env_keep="SSH_AUTH_SOCK"
 Defaults !requiretty
 EOF
