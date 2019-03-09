@@ -68,8 +68,14 @@ EOF
 # Secrets Wrapper Binary hosted by GLG
 cat << 'EOF' >> ${CONTAINER_BUILD_SCRIPT}
 trace Downloading latest secrets binary
-sudo aws --region us-east-1 s3 cp s3://glg-deployment-packages/secrets /usr/bin/secrets
-sudo chmod +x /usr/bin/secrets
+# Using "http" instead of aws command intentionally here.  The aws command
+# implies the user will implicitely have aws configured - and, we don't
+# want to impose that when we don't need it.
+SECRETS_BIN='/usr/bin/secrets'
+sudo curl -s 'https://s3.amazonaws.com/glg-deployment-packages/secrets' -o "${SECRETS_BIN}" \
+  && echo "download_secrets:success" \
+  || echo "download_secrets:fail"
+sudo chmod +x "${SECRETS_BIN}"
 EOF
 
 #now -- this is escaped, lots of variables included from this script
