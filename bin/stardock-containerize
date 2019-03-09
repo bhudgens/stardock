@@ -94,7 +94,7 @@ info "build_script|fetching_buildpack:\${ORDERS_NAME}"
 sudo mkdir -p "\${HOME}/build"
 sudo chown -R "${STARDOCK_APP_USER}:${STARDOCK_APP_USER}" "\${HOME}/build"
 if [ "${git_url}" == "-" ] \
-|| [ "${UNPUBLISHED}" == "1" ]; then
+|| [ "\${UNPUBLISHED}" == "1" ]; then
   sudo -E "${DIR}/stardock-git-sync" "https://github.com/bhudgens/null-buildpack.git"  "\${HOME}/build/buildpacks/ZZZ-NULL"
 fi
 
@@ -106,8 +106,8 @@ info "build_script|cronner:${ORDERS}"
 
 info "build_script|after_containerize:${orders_dir}/after_containerize"
 [ -x ${orders_dir}/after_containerize ] && sudo -E ${orders_dir}/after_containerize
-
 info "build_script|done:container ready"
+
 
 EOF
 
