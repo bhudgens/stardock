@@ -93,7 +93,8 @@ info "build_script|fetching_buildpack:\${ORDERS_NAME}"
 # Set up a place onboard for possible custom buildpacks
 sudo mkdir -p "\${HOME}/build"
 sudo chown -R "${STARDOCK_APP_USER}:${STARDOCK_APP_USER}" "\${HOME}/build"
-if [ "${git_url}" == "-" ]; then
+if [ "${git_url}" == "-" ] \
+|| [ "${UNPUBLISHED}" == "1" ]; then
   sudo -E "${DIR}/stardock-git-sync" "https://github.com/bhudgens/null-buildpack.git"  "\${HOME}/build/buildpacks/ZZZ-NULL"
 fi
 
