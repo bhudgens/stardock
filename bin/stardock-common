@@ -92,7 +92,10 @@ function docker_remote_is_enabled() {
   if [ "${STARDOCK_REPOSITORY}" != "${STARDOCK_REPOSITORY_DEFAULT}" ] \
   && [ -n "${STARDOCK_ENABLE_REMOTE_REPOSITORY}" ]; then
     true
+    return
   fi
+
+  false
 }
 
 function wait_for_docker_container() {
