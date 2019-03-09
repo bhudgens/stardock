@@ -85,6 +85,11 @@ source "${STARDOCK_BIN}/stardock-launcher"
 export ORDERS_NAME="$(basename $(dirname $orders))"
 container_environment ${app_root} ${orders}
 
+# Let's make sure cron is running
+# in containers to support legacy
+# behavior
+[ -f /usr/sbin/cron ] && sudo /usr/sbin/cron
+
 if [[ -f Procfile ]]; then
     ruby -e "require 'yaml';puts YAML.load_file('Procfile')['\$1']" | bash
 else
