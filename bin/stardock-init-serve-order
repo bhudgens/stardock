@@ -133,6 +133,10 @@ function pre_start() {
 ## Start - Start the above container
 ##########################################################################
 function docker_run() {
+  # If /dev/log exists on host OS we'll pass it through to
+  # the container so "logger" will pass logs to host
+  [ -e /dev/log ] && ENABLE_LOGGER=true
+
   ORDERS_FILE="${HEADQUARTERS_LOCAL}/${order}/orders"
   # We are not destroying the image we just made - only the container
   # so we can get a clean start with the image
@@ -167,6 +171,7 @@ function docker_run() {
                | egrep export \
                | perl -pe 's|export ||' ) \
     -v "${STARDOCK_CACHE}/data":"/var/data" \
+    ${ENABLE_LOGGER:+-v /dev/log:/dev/log} \
     "${IMAGE_TO_RUN}" & # sudo -E -H -u "${STARDOCK_APP_USER}" $@ &
 
   MY_DOCKER_CHILD=$!
