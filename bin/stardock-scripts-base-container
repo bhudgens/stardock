@@ -91,10 +91,11 @@ sudo chmod +x "${SECRETS_BIN}"
 export HOME=/
 sudo gem install bundler -v 1.16.5
 
-cat << EOF >> /etc/rsyslog.d/999-localship.conf
+cat << EOF >> /tmp/999-localship.conf
 # This forwards the container's traffic to the host
 *.* @localship
 EOF
+sudo mv /tmp/999-localship.conf /etc/rsyslog.d/999-localship.conf
 
 # Since we are set -e we won't see this in the log unless things work out
 echo "base_container_install:success"
