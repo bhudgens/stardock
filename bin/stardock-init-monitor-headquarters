@@ -26,12 +26,12 @@ while [ 1 ]; do
   if [ -n "${HEADQUARTERS_REMOTE}" ]; then
     if "${DIR}/stardock-git-sync" "${HEADQUARTERS_REMOTE}" "${HEADQUARTERS_LOCAL}"; then
       # XXX: Backwards compatability
-      if [ ${STARDOCK_ENABLE_HQ_OVERLAY} ] \
+      if [ -n "${STARDOCK_ENABLE_HQ_OVERLAY}" ] \
       && [ -d ${HEADQUARTERS_LOCAL}/overlay ]; then
         cp -R ${HEADQUARTERS_LOCAL}/overlay/* /
       fi
 
-      if [ ${STARDOCK_ENABLE_SHIP_SCRIPTS} ]; then
+      if [ -n "${STARDOCK_ENABLE_SHIP_SCRIPTS}" ]; then
 
         # Ian's ship script
         if [ -f ${HEADQUARTERS_LOCAL}/run_this_on_update ] \
