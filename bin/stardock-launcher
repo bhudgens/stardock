@@ -14,9 +14,10 @@ set +a
 trace "${COMMAND_PATH} $@"
 
 # handle our docopt validation
-[ -f "${COMMAND_PATH}" ] || exit 0
-help="$(grep "^### " "${COMMAND_PATH}" | cut -c 5-)"
-# again, we want whatever comes out of docopt to be exported
+if [ -f "${COMMAND_PATH}" ]; then
+  help="$(grep "^### " "${COMMAND_PATH}" | cut -c 5-)"
+  # again, we want whatever comes out of docopt to be exported
+fi
 
 if [ -n "${help}" ]; then
   set -a
