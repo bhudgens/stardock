@@ -43,7 +43,12 @@ while [ 1 ]; do
         run_ship_scripts
 
         for service in $(echo $SERVICES_TO_RESTART_ON_HQ_UPDATE); do
+          if [ -f "/etc/init.d/$service" ]; then
+            "/etc/init.d/$service" restart || true
+            "/etc/init.d/$service" start || true
+          fi
           systemctl restart "${service}" || true
+          systemctl start "${service}" || true
         done
       fi
 
