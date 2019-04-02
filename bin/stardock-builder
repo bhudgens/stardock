@@ -27,7 +27,7 @@ if [ -n "$BUILDPACK_URL" ]; then
   buildpack="$buildpack_root/custom"
   rm -rf "$buildpack"
   #mod here to allow #branch syntax
-  sudo -E stardock-git-sync "$BUILDPACK_URL" "$buildpack"
+  sudo -E "${STARDOCK_BIN}/stardock-git-sync" "$BUILDPACK_URL" "$buildpack"
   selected_buildpack="$buildpack"
   buildpack_name=$($buildpack/bin/detect "$app_root") && selected_buildpack=$buildpack
 else
