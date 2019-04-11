@@ -13,7 +13,6 @@ python-pip
 nodejs
 libpcre3
 libpcre3-dev
-ntp
 libssl-dev
 liblua5.1-0-dev
 libluajit-5.1-dev
