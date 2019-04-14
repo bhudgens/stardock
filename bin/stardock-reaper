@@ -69,6 +69,7 @@ for image_and_name in $(docker container ls --format '{{.Image}},{{.Names}}' \
   tag="$(echo $repository_and_tag | cut -f2 -d':')"
   name="$(echo $repository_and_tag | cut -f2 -d',')"
 
+  [ "${STARDOCK_BASE}" = "$(basename ${repository})" ] && continue
   STATUS_FILE="${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"
   # If the status file exists get the status
   [ -f "${STATUS_FILE}" ] && CURRENT_STATUS=$(cat "${STATUS_FILE}")
