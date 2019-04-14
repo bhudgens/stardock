@@ -65,9 +65,9 @@ for image_and_name in $(docker container ls --format '{{.Image}},{{.Names}}' \
     | grep --invert-match "${current_service_name}"); do
 
   repository_and_tag="$(echo $image_and_name | cut -f1 -d',')"
+  name="$(echo $image_and_name | cut -f2 -d',')"
   repository="$(echo $repository_and_tag | cut -f1 -d':')"
   tag="$(echo $repository_and_tag | cut -f2 -d':')"
-  name="$(echo $repository_and_tag | cut -f2 -d',')"
 
   [ "${STARDOCK_BASE}" = "$(basename ${repository})" ] && continue
   STATUS_FILE="${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"
