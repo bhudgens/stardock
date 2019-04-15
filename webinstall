@@ -2,13 +2,13 @@
 # TODO: All the paths need to change on final
 ## TO USE THIS SCRIPT PASTE THE FOLLOWING INTO THE TERMINAL:
 
-# bash -c "$(curl -s https://raw.githubusercontent.com/wballard/starphleet/master/webinstall)"
+# bash -c "$(curl -s https://raw.githubusercontent.com/bhudgens/stardock/master/webinstall)"
 
 ##############################################################################
 ## Author:          Benjamin Hudgens
-## Date:            March 18, 2015
+## Date:            April 11, 2019
 ##
-## Description:     Fully Deploy starphleet from the command line
+## Description:     Fully Deploy stardock from the command line
 ##
 ##############################################################################
 ## Locations to this repo

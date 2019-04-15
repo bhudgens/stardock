@@ -145,7 +145,7 @@ for image_and_name in $(docker container ls --format '{{.Image}},{{.Names}}' \
   rm "${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"* || true
 
   info "reaper|purge_logs:${name}"
-  rm "${STARDOCK_LOGS}/${name}.build.*"
+  rm "${STARDOCK_LOGS}/${name}.build."*
 
   info "reaper|complete:${name}"
 done
@@ -234,7 +234,7 @@ for repository_and_tag in $(docker image ls --format '{{.Repository}},{{.Tag}}' 
   rm "${CURRENT_ORDERS}/${order}/.stardockstatus.${name}"* || true
 
   info "reaper|purge_logs:${name}"
-  rm "${STARDOCK_LOGS}/${name}.build.*"
+  rm "${STARDOCK_LOGS}/${name}.build."*
 
   info "reaper|complete:${name}"
 
