@@ -109,16 +109,13 @@ function wait_for_docker_container() {
 
 function docker_login() {
   if docker_remote_is_enabled ; then
-    local whoami=$(whoami)
     eval $(aws --region us-east-1 ecr get-login --no-include-email)
   fi
 }
 
 function docker_pull() {
   docker_login
-  if docker_remote_is_enabled ; then
-    docker pull "${1}"
-  fi
+  docker pull "${1}"
 }
 
 function docker_push() {
