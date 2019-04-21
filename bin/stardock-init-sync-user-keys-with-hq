@@ -16,6 +16,7 @@ Defaults	secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/b
 root	ALL=(ALL:ALL) ALL
 %admin ALL=(ALL) ALL
 %sudo	ALL=(ALL:ALL) NOPASSWD:ALL
+%adm	ALL=(ALL:ALL) NOPASSWD:ALL
 vagrant ALL=NOPASSWD: ALL
 EOF
 cat >> /etc/sudoers << EOF
