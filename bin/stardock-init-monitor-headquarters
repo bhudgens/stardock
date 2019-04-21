@@ -25,6 +25,9 @@ while [ 1 ]; do
   source "${DIR}/stardock-common"
   if [ -n "${HEADQUARTERS_REMOTE}" ]; then
     if "${DIR}/stardock-git-sync" "${HEADQUARTERS_REMOTE}" "${HEADQUARTERS_LOCAL}"; then
+      # We need to do this -again- because we might have just grabbed some
+      # changes in a new HQ
+      source "${DIR}/stardock-common"
       # XXX: Backwards compatability
       if [ -n "${STARDOCK_ENABLE_HQ_OVERLAY}" ] \
       && [ -d ${HEADQUARTERS_LOCAL}/overlay ]; then
