@@ -84,13 +84,6 @@ set -e
 # implies the user will implicitely have aws configured - and, we don't
 # want to impose that when we don't need it.
 
-# XXX: Only need when working on secrets
-# SECRETS_BIN='/usr/bin/secrets'
-# sudo curl -s 'https://s3.amazonaws.com/glg-deployment-packages/secrets' -o "${SECRETS_BIN}" \
-#   && echo "download_secrets:success" \
-#   || echo "download_secrets:fail"
-# sudo chmod +x "${SECRETS_BIN}"
-
 ## ruby superstition
 # XXX: Only need when working on ruby fixes
 # export HOME=/

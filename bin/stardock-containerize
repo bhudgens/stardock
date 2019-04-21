@@ -73,9 +73,9 @@ trace Downloading latest secrets binary
 # want to impose that when we don't need it.
 SECRETS_BIN='/usr/bin/secrets'
 sudo curl -s 'https://s3.amazonaws.com/glg-deployment-packages/secrets' -o "${SECRETS_BIN}" \
+  && sudo chmod +x "${SECRETS_BIN}" \
   && echo "download_secrets:success" \
   || echo "download_secrets:fail"
-sudo chmod +x "${SECRETS_BIN}"
 EOF
 
 #now -- this is escaped, lots of variables included from this script
