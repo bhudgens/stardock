@@ -38,6 +38,7 @@ EOF
 }
 
 while [ 1 ]; do
+  source "${DIR}/stardock-common"
 
   # Captain
   make_user "${CAPTAIN}" "${CAPTAIN_HOME}"
