@@ -56,7 +56,7 @@ while [ 1 ]; do
       fi
 
       if [ -d "${HEADQUARTERS_LOCAL}/ssl" ]; then
-        cp "${HEADQUARTERS_LOCAL}"/ssl/* "${STARDOCK_NGINX_CONF}/published" 2> /dev/null
+        cp "${HEADQUARTERS_LOCAL}"/ssl/* "${STARDOCK_NGINX_RUNTIME}/published" 2> /dev/null
       fi
 
       "${DIR}/stardock-hup-nginx"
