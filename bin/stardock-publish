@@ -74,8 +74,8 @@ mkdir -p "${STARDOCK_NGINX_RUNTIME}/named_servers"
 mkdir -p "${STARDOCK_NGINX_RUNTIME}/htpasswd"
 mkdir -p "${STARDOCK_NGINX_RUNTIME}/published_secure"
 
-[ -f "${STARDOCK_NGINX_RUNTIME}/published/crt" ] && cp "${STARDOCK_NGINX_RUNTIME}/crt" "${STARDOCK_NGINX_RUNTIME}/published/crt"
-[ -f "${STARDOCK_NGINX_RUNTIME}/published/key" ] && cp "${STARDOCK_NGINX_RUNTIME}/key" "${STARDOCK_NGINX_RUNTIME}/published/key"
+[ -f "${STARDOCK_NGINX_RUNTIME}/published/crt" ] || cp "${STARDOCK_NGINX_RUNTIME}/crt" "${STARDOCK_NGINX_RUNTIME}/published/crt"
+[ -f "${STARDOCK_NGINX_RUNTIME}/published/key" ] || cp "${STARDOCK_NGINX_RUNTIME}/key" "${STARDOCK_NGINX_RUNTIME}/published/key"
 
 if [ -n "${REDIRECT_TO_SERVICE}" ]; then
   trace "setting service redirect for order ${order} to ${REDIRECT_TO_SERVICE}"
