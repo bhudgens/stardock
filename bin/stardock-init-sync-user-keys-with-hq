@@ -108,8 +108,8 @@ while [ 1 ]; do
         echo '' >> ${AUTHFILE}
       fi
     done
-  cat "${CAPTAINSSH}/id_rsa.pub" >> ${AUTHFILE}
   fi
+  cat "${CAPTAINSSH}/id_rsa.pub" >> ${AUTHFILE}
 
   chmod 600 ${AUTHFILE}
   chown ${CAPTAIN}:${CAPTAIN} ${AUTHFILE}
