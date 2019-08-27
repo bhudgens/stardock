@@ -123,7 +123,7 @@ local _resetHeaders = function(token)
     -- If the un field is set we'll also set the user_identity_cookie
     -- so that traditional betas will work with JWT
     local cookieString = ""
-    cookieString = cookieString .. user_identity_cookie .. "=" .. token.payload.un)
+    cookieString = cookieString .. user_identity_cookie .. "=" .. token.payload.un
     cookieString = cookieString .. (jwt_cookie_domain and '; Domain=' .. jwt_cookie_domain or '')
     cookieString = cookieString .. '; Path=/'
     ngx.header['Set-Cookie'] = cookieString
