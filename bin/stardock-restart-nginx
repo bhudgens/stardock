@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # vim:syn=sh
 ### Usage:
-###    starphleet-restart-nginx
+###    stardock-restart-nginx
 ###
 ### Requests that the hupper restart or start nginx as appropriate
 export DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 source "$DIR/stardock-launcher"
+set -x
 
 die_on_error
 run_as_root_or_die
 
-touch "${STARPHLEET_RESTART_NGINX_HUP_TURD}"
-"${DIR}/starphleet-hup-nginx"
+touch "${STARDOCK_RESTART_NGINX_HUP_TURD}"
+"${DIR}/stardock-hup-nginx"
