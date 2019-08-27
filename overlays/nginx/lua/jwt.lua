@@ -213,7 +213,7 @@ end
 --      to pass the token via the URL.
 ------------------------------------------------------------------------------
 local authorizationBearerString = _getAuthorizationHeader()
-local verified_url_token = jwt:verify(jwt_secret, ngx.var.arg_jwt, 0)
+local verified_url_token = jwt:verify(jwt_secret, ngx.var.arg_session, 0)
 local verified_cookie_token = jwt:verify(jwt_secret, ngx.var["cookie_" .. jwt_cookie_name], 0)
 local verified_bearer_token = jwt:verify(jwt_secret, authorizationBearerString, 0)
 
