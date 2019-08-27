@@ -108,8 +108,8 @@ while [ 1 ]; do
         echo '' >> ${AUTHFILE}
       fi
     done
-  fi
   cat "${CAPTAINSSH}/id_rsa.pub" >> ${AUTHFILE}
+  fi
 
   chmod 600 ${AUTHFILE}
   chown ${CAPTAIN}:${CAPTAIN} ${AUTHFILE}
@@ -120,3 +120,4 @@ while [ 1 ]; do
 
   sleep ${STARDOCK_PULSE}
 done
+
