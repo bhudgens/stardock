@@ -78,10 +78,11 @@ if [ -z "${SERVE_CONTAINERS}" ] \
     info "containermake|base_container:${CONTAINER_NAME}"
     # Get the IP to the Docker Bridge
     docker create -i \
-     -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
-     -v "${STARDOCK_KEY}":"${STARDOCK_KEY}" \
-     --add-host="localship:${BRIDGE_IP}" \
-     --name "${CONTAINER_NAME}" ubuntu:trusty
+      -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
+      -v "${STARDOCK_CACHE}/data":"/var/data" \
+      -v "${STARDOCK_KEY}":"${STARDOCK_KEY}" \
+      --add-host="localship:${BRIDGE_IP}" \
+      --name "${CONTAINER_NAME}" ubuntu:trusty
 
     docker_exec "mkdir -p ${STARDOCK_ROOT}"
     docker_exec "mkdir -p ${STARDOCK_BIN}"
@@ -124,10 +125,11 @@ if [ -z "${SERVE_CONTAINERS}" ] \
   else
     # Get the IP to the Docker Bridge
     docker create -i \
-     -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
-     -v "${STARDOCK_KEY}":"${STARDOCK_KEY}" \
-     --add-host="localship:${BRIDGE_IP}" \
-     --name "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}/${base_container_name}:latest"
+      -v "${STARDOCK_CACHE}/data":"/var/data" \
+      -v "${STARDOCK_CACHE}":"${STARDOCK_CACHE}" \
+      -v "${STARDOCK_KEY}":"${STARDOCK_KEY}" \
+      --add-host="localship:${BRIDGE_IP}" \
+      --name "${CONTAINER_NAME}" "${STARDOCK_REPOSITORY}/${base_container_name}:latest"
 
     # These are files we'll want to refresh every time we
     # start a new container
