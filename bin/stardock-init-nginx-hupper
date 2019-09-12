@@ -135,7 +135,7 @@ while [ 1 ]; do
     then
       # the config is good, let's get nginx running
       if [ -f "${STARDOCK_RESTART_NGINX_HUP_TURD}" ]; then
-        docker kill -s QUIT "${STARDOCK_NGINX_CONTAINER}"
+        docker container stop "${STARDOCK_NGINX_CONTAINER}"
         rm "${STARDOCK_RESTART_NGINX_HUP_TURD}"
       else
         docker kill -s HUP "${STARDOCK_NGINX_CONTAINER}"
